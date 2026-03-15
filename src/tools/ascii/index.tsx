@@ -4,11 +4,11 @@ import { Sidebar } from "@/components/sidebar"
 export default function Ascii() {
   return (
     <>
-      <CanvasArea />
       <Sidebar>
         <h2 className="text-sm font-medium text-text-primary">Ascii</h2>
         <p className="mt-2 text-xs text-text-muted">Controls coming soon</p>
       </Sidebar>
+      <CanvasArea />
     </>
   )
 }

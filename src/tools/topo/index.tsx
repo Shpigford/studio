@@ -114,7 +114,6 @@ export default function Topo() {
 
   return (
     <>
-      <CanvasArea ref={containerRef} />
       <Sidebar>
         <h2 className="mb-3 text-sm font-medium text-text-primary">Topo</h2>
 
@@ -274,6 +273,7 @@ export default function Topo() {
           <Button variant="primary" onClick={download}>Download PNG</Button>
         </ButtonRow>
       </Sidebar>
+      <CanvasArea ref={containerRef} />
     </>
   )
 }

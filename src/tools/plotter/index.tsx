@@ -4,11 +4,11 @@ import { Sidebar } from "@/components/sidebar"
 export default function Plotter() {
   return (
     <>
-      <CanvasArea />
       <Sidebar>
         <h2 className="text-sm font-medium text-text-primary">Plotter</h2>
         <p className="mt-2 text-xs text-text-muted">Controls coming soon</p>
       </Sidebar>
+      <CanvasArea />
     </>
   )
 }
