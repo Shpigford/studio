@@ -34,7 +34,7 @@ npx vitest run src/lib/color.test.ts  # Single test file
 ### Layout: Three-column shell
 - **ToolSwitcher** (48px left rail) — vertical icon nav, stores last-used tool in localStorage
 - **Canvas Area** (flex: 1 center) — mounts p5/Three.js/Canvas2D per tool
-- **Sidebar** (280px right) — scrollable controls, varies per tool
+- **Sidebar** (280px right) — scrollable controls with pinned footer for action buttons, varies per tool
 
 ### Routing & Loading
 - Each tool is a lazy-loaded route (`/topo`, `/blocks`, etc.)
@@ -60,6 +60,8 @@ Each tool lives in `src/tools/<name>/` with:
 
 ### Shared Controls (`src/components/controls/`)
 Reusable control components: `slider-control`, `select-control`, `color-control`, `switch-control`, `section` (collapsible), `gradient-editor`, `palette-editor`, `button-row`.
+
+**Sidebar footer pattern:** Action buttons (Randomize/Reset/Download) must always be visible. Pass them as `<Sidebar footer={<ButtonRow>...</ButtonRow>}>`. Settings scroll above; buttons stay pinned at the bottom.
 
 ## Design Rules
 

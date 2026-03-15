@@ -114,7 +114,13 @@ export default function Topo() {
 
   return (
     <>
-      <Sidebar>
+      <Sidebar footer={
+        <ButtonRow>
+          <Button variant="secondary" onClick={randomize}>Randomize</Button>
+          <Button variant="secondary" onClick={reset}>Reset</Button>
+          <Button variant="primary" onClick={download}>Download PNG</Button>
+        </ButtonRow>
+      }>
         <h2 className="mb-3 text-sm font-medium text-text-primary">Topo</h2>
 
         <Section title="Terrain">
@@ -267,11 +273,6 @@ export default function Topo() {
           />
         </Section>
 
-        <ButtonRow>
-          <Button variant="secondary" onClick={randomize}>Randomize</Button>
-          <Button variant="secondary" onClick={reset}>Reset</Button>
-          <Button variant="primary" onClick={download}>Download PNG</Button>
-        </ButtonRow>
       </Sidebar>
       <CanvasArea ref={containerRef} />
     </>
