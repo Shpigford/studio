@@ -13,7 +13,7 @@ function SidebarInner({ children, footer }: SidebarProps) {
         {children}
       </div>
       {footer && (
-        <div className="shrink-0 border-t border-border-control p-4">
+        <div className="shrink-0 border-t border-border-control p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {footer}
         </div>
       )}

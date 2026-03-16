@@ -18,7 +18,7 @@ export function AppShell() {
   }, [toolId])
 
   return (
-    <div className={`flex h-screen overflow-hidden ${isMobile ? 'flex-col' : ''}`}>
+    <div className={`flex h-svh overflow-hidden ${isMobile ? 'flex-col' : ''}`}>
       <ToolSwitcher />
       <Outlet />
     </div>
