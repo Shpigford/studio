@@ -1,5 +1,6 @@
 export type BlocksSettings = {
   seed: number
+  bgColor: string
   patternType: 'mondrian' | 'grid' | 'horizontal' | 'diagonal'
   blockCount: number
   complexity: number
