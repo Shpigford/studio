@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { Routes, Route, Navigate } from "react-router-dom"
 import { AppShell } from "@/components/app-shell"
-import { tools } from "@/tools/registry"
+import { tools, pages } from "@/tools/registry"
 
 function getDefaultTool(): string {
   const stored = localStorage.getItem("studio:last-tool")
@@ -29,7 +29,7 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        {tools.map((tool) => (
+        {[...tools, ...pages].map((tool) => (
           <Route
             key={tool.id}
             path={tool.id}

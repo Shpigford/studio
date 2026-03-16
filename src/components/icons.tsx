@@ -60,6 +60,7 @@ const palettes = {
   plotter:     ["#1a1a33", "#2d2d66", "#5a5a99", "#8b8bcc"],
   ascii:       ["#1a2e1a", "#2d5a1a", "#5a8c2d", "#8bbd5a"],
   lines:       ["#1a3340", "#2d5c6b", "#5a8f9e", "#8fc2d1"],
+  about:       ["#262626", "#404040", "#666666", "#8c8c8c"],
 } as const
 
 type ToolId = keyof typeof palettes

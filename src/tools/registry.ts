@@ -51,3 +51,12 @@ export const tools: ToolDefinition[] = [
     component: lazy(() => import("@/tools/lines")),
   },
 ]
+
+export const pages: ToolDefinition[] = [
+  {
+    id: "about",
+    name: "About",
+    icon: "about",
+    component: lazy(() => import("@/tools/about")),
+  },
+]

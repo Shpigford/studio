@@ -4,7 +4,7 @@ import { ToolSwitcher } from "@/components/tool-switcher"
 import { useFavicon } from "@/hooks/use-favicon"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { useMobile } from "@/hooks/use-mobile"
-import { tools } from "@/tools/registry"
+import { tools, pages } from "@/tools/registry"
 
 export function AppShell() {
   const toolId = useLocation().pathname.slice(1)
@@ -13,7 +13,7 @@ export function AppShell() {
   const isMobile = useMobile()
 
   useEffect(() => {
-    const tool = tools.find((t) => t.id === toolId)
+    const tool = [...tools, ...pages].find((t) => t.id === toolId)
     document.title = tool ? `${tool.name} - Studio` : "Studio"
   }, [toolId])
 
