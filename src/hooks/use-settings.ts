@@ -27,24 +27,32 @@ export function useSettings<T extends Record<string, unknown>>(
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef<T | null>(null);
 
   // Debounced write to localStorage
   const writeToStorage = useCallback(
     (value: T) => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      pendingRef.current = value;
       timerRef.current = setTimeout(() => {
         localStorage.setItem(storageKey, JSON.stringify(value));
+        pendingRef.current = null;
       }, 200);
     },
     [storageKey],
   );
 
-  // Cleanup timer on unmount
+  // Flush pending write on unmount so settings aren't lost
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        if (pendingRef.current !== null) {
+          localStorage.setItem(storageKey, JSON.stringify(pendingRef.current));
+        }
+      }
     };
-  }, []);
+  }, [storageKey]);
 
   const update = useCallback(
     (patch: Partial<T>) => {

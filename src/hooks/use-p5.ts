@@ -52,11 +52,25 @@ export function useP5<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerRef]);
 
-  // Trigger redraw on settings change (static mode only)
+  // Trigger redraw on settings change (static mode only).
+  // Throttle to one redraw per animation frame so rapid slider drags
+  // don't queue multiple expensive synchronous redraws.
+  const rafRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!options?.animated && instanceRef.current) {
-      instanceRef.current.redraw();
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        instanceRef.current?.redraw();
+      });
     }
+    return () => {
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
   }, [settings, options?.animated]);
 
   return instanceRef;

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { shortcutActions } from '@/lib/shortcut-actions'
 
 interface Actions {
@@ -8,14 +8,17 @@ interface Actions {
 }
 
 export function useShortcutActions(actions: Actions) {
+  const ref = useRef(actions)
+  ref.current = actions
+
   useEffect(() => {
-    shortcutActions.randomize = actions.randomize ?? null
-    shortcutActions.reset = actions.reset ?? null
-    shortcutActions.download = actions.download ?? null
+    shortcutActions.randomize = () => ref.current.randomize?.()
+    shortcutActions.reset = () => ref.current.reset?.()
+    shortcutActions.download = () => ref.current.download?.()
     return () => {
       shortcutActions.randomize = null
       shortcutActions.reset = null
       shortcutActions.download = null
     }
-  })
+  }, [])
 }

@@ -36,8 +36,21 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
   let cachedPolys: PolyBlock[] = []
   let cachedLayoutKey = ''
 
+  // Pre-effects canvas cache — avoids redrawing geometry when only effects change,
+  // and avoids re-running effects when only geometry changes with same effect params.
+  let preEffectsCanvas: OffscreenCanvas | null = null
+  let cachedDrawKey = ''
+  let cachedNoiseMap: Float32Array | null = null
+  let cachedNoiseMapW = 0
+  let cachedNoiseMapDims = ''
+
   function layoutKey(s: BlocksSettings): string {
     return `${s.seed}|${s.patternType}|${s.blockCount}|${s.complexity}|${s.asymmetry}|${s.gridDivisions}|${s.canvasSize}`
+  }
+
+  // Everything that affects the drawn geometry (before effects)
+  function drawKey(s: BlocksSettings): string {
+    return `${layoutKey(s)}|${s.colors.join(',')}|${s.colorDensity}|${s.lineWeight}|${s.lineColor}|${s.edgeWobble}|${s.rotation}`
   }
 
   p.setup = () => {
@@ -63,72 +76,90 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
       p.resizeCanvas(tw, th)
       p.colorMode(p.RGB, 255)
       cachedLayoutKey = '' // force recompute
+      cachedDrawKey = '' // force geometry redraw
     }
 
-    p.background('#f5f5f0')
+    const dk = drawKey(s)
+    const needsGeometryRedraw = dk !== cachedDrawKey
 
-    // Recompute layout if cache key changed
-    const lk = layoutKey(s)
-    if (lk !== cachedLayoutKey) {
-      computeLayout(s)
-      cachedLayoutKey = lk
-    }
+    if (needsGeometryRedraw) {
+      // Full geometry redraw
+      p.background('#f5f5f0')
 
-    // Assign colors deterministically
-    const colorRng = seededRandom(s.seed + 7)
-    const colorDensity = s.colorDensity / 100
-    const wobble = s.edgeWobble / 100
-
-    // Apply rotation
-    p.push()
-    p.translate(p.width / 2, p.height / 2)
-    p.rotate(p.radians(s.rotation))
-    p.translate(-p.width / 2, -p.height / 2)
-
-    if (s.patternType === 'diagonal') {
-      // Draw polygon blocks
-      const drawRng = seededRandom(s.seed + 13)
-      for (const poly of cachedPolys) {
-        const blockColor = pickColor(colorRng, colorDensity, s.colors)
-        drawPaintedPolygon(p, poly.points, blockColor, wobble, drawRng)
+      // Recompute layout if cache key changed
+      const lk = layoutKey(s)
+      if (lk !== cachedLayoutKey) {
+        computeLayout(s)
+        cachedLayoutKey = lk
       }
-      // Outlines
-      if (s.lineWeight > 0) {
-        const outlineRng = seededRandom(s.seed + 19)
-        p.stroke(s.lineColor)
-        p.strokeWeight(s.lineWeight)
-        p.noFill()
+
+      // Assign colors deterministically
+      const colorRng = seededRandom(s.seed + 7)
+      const colorDensity = s.colorDensity / 100
+      const wobble = s.edgeWobble / 100
+
+      // Apply rotation
+      p.push()
+      p.translate(p.width / 2, p.height / 2)
+      p.rotate(p.radians(s.rotation))
+      p.translate(-p.width / 2, -p.height / 2)
+
+      if (s.patternType === 'diagonal') {
+        const drawRng = seededRandom(s.seed + 13)
         for (const poly of cachedPolys) {
-          p.beginShape()
-          for (const pt of poly.points) {
-            p.vertex(
-              pt.x + (outlineRng() - 0.5) * wobble * 4,
-              pt.y + (outlineRng() - 0.5) * wobble * 4,
-            )
+          const blockColor = pickColor(colorRng, colorDensity, s.colors)
+          drawPaintedPolygon(p, poly.points, blockColor, wobble, drawRng)
+        }
+        if (s.lineWeight > 0) {
+          const outlineRng = seededRandom(s.seed + 19)
+          p.stroke(s.lineColor)
+          p.strokeWeight(s.lineWeight)
+          p.noFill()
+          for (const poly of cachedPolys) {
+            p.beginShape()
+            for (const pt of poly.points) {
+              p.vertex(
+                pt.x + (outlineRng() - 0.5) * wobble * 4,
+                pt.y + (outlineRng() - 0.5) * wobble * 4,
+              )
+            }
+            p.endShape(p.CLOSE)
           }
-          p.endShape(p.CLOSE)
         }
-      }
-    } else {
-      // Draw rect blocks
-      const drawRng = seededRandom(s.seed + 13)
-      for (const rect of cachedRects) {
-        const blockColor = pickColor(colorRng, colorDensity, s.colors)
-        drawPaintedBlock(p, rect, blockColor, wobble, drawRng)
-      }
-      // Outlines
-      if (s.lineWeight > 0) {
-        const outlineRng = seededRandom(s.seed + 19)
-        p.stroke(s.lineColor)
-        p.strokeWeight(s.lineWeight)
-        p.noFill()
+      } else {
+        const drawRng = seededRandom(s.seed + 13)
         for (const rect of cachedRects) {
-          drawWobblyRectOutline(p, rect, wobble, outlineRng)
+          const blockColor = pickColor(colorRng, colorDensity, s.colors)
+          drawPaintedBlock(p, rect, blockColor, wobble, drawRng)
+        }
+        if (s.lineWeight > 0) {
+          const outlineRng = seededRandom(s.seed + 19)
+          p.stroke(s.lineColor)
+          p.strokeWeight(s.lineWeight)
+          p.noFill()
+          for (const rect of cachedRects) {
+            drawWobblyRectOutline(p, rect, wobble, outlineRng)
+          }
         }
       }
-    }
 
-    p.pop()
+      p.pop()
+
+      // Snapshot pre-effects state to offscreen canvas
+      const c = ctx()
+      const d = p.pixelDensity()
+      const pw = p.width * d
+      const ph = p.height * d
+      if (!preEffectsCanvas || preEffectsCanvas.width !== pw || preEffectsCanvas.height !== ph) {
+        preEffectsCanvas = new OffscreenCanvas(pw, ph)
+      }
+      preEffectsCanvas.getContext('2d')!.drawImage(c.canvas, 0, 0)
+      cachedDrawKey = dk
+    } else {
+      // Geometry hasn't changed — restore from cache
+      const c = ctx()
+      c.drawImage(preEffectsCanvas!, 0, 0)
+    }
 
     // Post-processing effects
     if (s.texture > 0 || s.grain > 0 || s.halftone > 0) {
@@ -450,24 +481,34 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
       const textureVariation = textureStrength * 50
       const grainVariation = grainStrength * 35
 
-      // Pre-compute texture noise at half resolution — p.noise() is expensive per-pixel
+      // Noise map only depends on canvas dimensions (always seeded with 42).
+      // Cache it so dragging texture/grain sliders doesn't recompute Perlin noise.
       let noiseMap: Float32Array | null = null
       let nmW = 0
       if (textureStrength > 0) {
-        p.noiseSeed(42)
-        const step = 2
-        nmW = Math.ceil(w / (d * step))
-        const nmH = Math.ceil(h / (d * step))
-        noiseMap = new Float32Array(nmW * nmH)
-        for (let ny = 0; ny < nmH; ny++) {
-          const py = ny * step
-          for (let nx = 0; nx < nmW; nx++) {
-            const px = nx * step
-            const fine = p.noise(px * 0.5, py * 0.5) - 0.5
-            const med = p.noise(px * 0.08 + 100, py * 0.08 + 100) - 0.5
-            const coarse = p.noise(px * 0.02 + 200, py * 0.02 + 200) - 0.5
-            noiseMap[ny * nmW + nx] = (fine * 0.4 + med * 0.35 + coarse * 0.25) * 2
+        const dims = `${w}|${h}|${d}`
+        if (cachedNoiseMap && cachedNoiseMapDims === dims) {
+          noiseMap = cachedNoiseMap
+          nmW = cachedNoiseMapW
+        } else {
+          p.noiseSeed(42)
+          const step = 2
+          nmW = Math.ceil(w / (d * step))
+          const nmH = Math.ceil(h / (d * step))
+          noiseMap = new Float32Array(nmW * nmH)
+          for (let ny = 0; ny < nmH; ny++) {
+            const py = ny * step
+            for (let nx = 0; nx < nmW; nx++) {
+              const px = nx * step
+              const fine = p.noise(px * 0.5, py * 0.5) - 0.5
+              const med = p.noise(px * 0.08 + 100, py * 0.08 + 100) - 0.5
+              const coarse = p.noise(px * 0.02 + 200, py * 0.02 + 200) - 0.5
+              noiseMap[ny * nmW + nx] = (fine * 0.4 + med * 0.35 + coarse * 0.25) * 2
+            }
           }
+          cachedNoiseMap = noiseMap
+          cachedNoiseMapW = nmW
+          cachedNoiseMapDims = dims
         }
       }
 
