@@ -1,9 +1,33 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react'
 import { useMobile } from '@/hooks/use-mobile'
+import { shortcutActions } from '@/lib/shortcut-actions'
+import { Kbd } from '@/components/ui/kbd'
 
 interface SidebarProps {
   children: React.ReactNode
   footer?: React.ReactNode
+}
+
+function CopyLinkButton() {
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    function onCopied() {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }
+    window.addEventListener('studio:link-copied', onCopied)
+    return () => window.removeEventListener('studio:link-copied', onCopied)
+  }, [])
+
+  return (
+    <button
+      onClick={() => shortcutActions.copyLink?.()}
+      className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md text-xs text-text-muted transition-colors duration-150 hover:text-text-primary"
+    >
+      {copied ? 'Copied!' : <>Copy Link <Kbd>C</Kbd></>}
+    </button>
+  )
 }
 
 function SidebarInner({ children, footer }: SidebarProps) {
@@ -13,10 +37,13 @@ function SidebarInner({ children, footer }: SidebarProps) {
         {children}
       </div>
       {footer && (
-        <div className="shrink-0 border-t border-border-control p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="shrink-0 border-t border-border-control p-4 pb-0">
           {footer}
         </div>
       )}
+      <div className="shrink-0 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <CopyLinkButton />
+      </div>
     </>
   )
 }
