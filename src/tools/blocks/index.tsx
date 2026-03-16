@@ -17,6 +17,7 @@ import type { BlocksSettings } from './types'
 
 const DEFAULTS: BlocksSettings = {
   seed: 4242,
+  bgColor: '#f5f5f0',
   patternType: 'mondrian',
   blockCount: 6,
   complexity: 4,
@@ -66,8 +67,10 @@ export default function Blocks() {
     const paletteNames = Object.keys(PALETTES)
     const palName = paletteNames[Math.floor(Math.random() * paletteNames.length)]
 
+    const bgColors = ['#f5f5f0', '#1a1a1a', '#0a0a0a', '#000000', '#2c2c2c', '#f0e6d3', '#e8e0d0']
     update({
       seed: Math.floor(Math.random() * 99999),
+      bgColor: bgColors[Math.floor(Math.random() * bgColors.length)],
       patternType: patternTypes[Math.floor(Math.random() * patternTypes.length)],
       blockCount: Math.floor(Math.random() * 15) + 3,
       complexity: Math.floor(Math.random() * 7) + 1,
@@ -186,6 +189,11 @@ export default function Blocks() {
         </Section>
 
         <Section title="Color">
+          <ColorControl
+            label="Background"
+            value={settings.bgColor}
+            onChange={(v) => update({ bgColor: v })}
+          />
           <SelectControl
             label="Palette"
             value={settings.palette}

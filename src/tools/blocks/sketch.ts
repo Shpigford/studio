@@ -50,7 +50,7 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
 
   // Everything that affects the drawn geometry (before effects)
   function drawKey(s: BlocksSettings): string {
-    return `${layoutKey(s)}|${s.colors.join(',')}|${s.colorDensity}|${s.lineWeight}|${s.lineColor}|${s.edgeWobble}|${s.rotation}`
+    return `${layoutKey(s)}|${s.bgColor}|${s.colors.join(',')}|${s.colorDensity}|${s.lineWeight}|${s.lineColor}|${s.edgeWobble}|${s.rotation}`
   }
 
   p.setup = () => {
@@ -84,7 +84,7 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
 
     if (needsGeometryRedraw) {
       // Full geometry redraw
-      p.background('#f5f5f0')
+      p.background(s.bgColor)
 
       // Recompute layout if cache key changed
       const lk = layoutKey(s)
