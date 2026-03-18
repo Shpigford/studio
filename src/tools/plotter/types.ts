@@ -1,3 +1,44 @@
+export type PlotterPoint = { x: number; y: number }
+
+export type PlotterPrimitiveShapeType =
+  | 'circle'
+  | 'square'
+  | 'triangle'
+  | 'star'
+  | 'cross'
+  | 'ring'
+  | 'line'
+  | 'diamond'
+
+export type PlotterShapePrimitive = {
+  type: 'shape'
+  shapeType: PlotterPrimitiveShapeType
+  x: number
+  y: number
+  size: number
+  color: string
+  rotation: number
+  filled: boolean
+  strokeWeight: number
+}
+
+export type PlotterPathPrimitive = {
+  type: 'path'
+  points: PlotterPoint[]
+  closed: boolean
+  color: string
+  strokeWeight: number
+  filled: boolean
+}
+
+export type PlotterGeometry = {
+  elements: (PlotterShapePrimitive | PlotterPathPrimitive)[]
+  bgColor: string
+  width: number
+  height: number
+  margin: number
+}
+
 export type StippledSettings = {
   dotSpacing: number
   dotSize: number

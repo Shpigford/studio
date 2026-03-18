@@ -1,7 +1,9 @@
-import { useRef } from 'react'
+import { useCallback, useRef } from 'react'
+import type { RefObject } from 'react'
+import type p5 from 'p5'
 import { useSettings } from '@/hooks/use-settings'
 import { useP5 } from '@/hooks/use-p5'
-import { exportPNG, generateFilename } from '@/lib/export'
+import { exportPNG, exportSVG, generateFilename } from '@/lib/export'
 import { CanvasArea } from '@/components/canvas-area'
 import { Sidebar } from '@/components/sidebar'
 import { Section } from '@/components/controls/section'
@@ -13,7 +15,8 @@ import { Button } from '@/components/ui/button'
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
 import { createBlocksSketch, PALETTES } from './sketch'
-import type { BlocksSettings } from './types'
+import { generateBlocksSvg } from './svg'
+import type { BlocksSettings, BlocksGeometry } from './types'
 
 const DEFAULTS: BlocksSettings = {
   seed: 4242,
@@ -41,9 +44,15 @@ const DEFAULTS: BlocksSettings = {
 
 export default function Blocks() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const geometryRef = useRef<BlocksGeometry | null>(null)
   const [settings, update, reset] = useSettings<BlocksSettings>('blocks', DEFAULTS)
-  const p5Ref = useP5(containerRef, createBlocksSketch, settings)
-  useShortcutActions({ randomize, reset, download })
+  const sketchFn = useCallback(
+    (p: p5, settingsRef: RefObject<BlocksSettings>) => createBlocksSketch(p, settingsRef, geometryRef),
+    [],
+  )
+  const p5Ref = useP5(containerRef, sketchFn, settings)
+  const hasRasterEffects = settings.texture > 0 || settings.grain > 0 || settings.halftone > 0
+  useShortcutActions({ randomize, reset, download: hasRasterEffects ? handleExportPNG : handleExportSVG })
 
   function handlePaletteChange(name: string) {
     if (name === 'custom') {
@@ -88,7 +97,14 @@ export default function Blocks() {
     })
   }
 
-  function download() {
+  function handleExportSVG() {
+    const geo = geometryRef.current
+    if (!geo) return
+    const svg = generateBlocksSvg(geo, settings)
+    if (svg) exportSVG(svg, generateFilename('blocks', 'svg'))
+  }
+
+  function handleExportPNG() {
     const canvas = (p5Ref.current as unknown as { canvas: HTMLCanvasElement })?.canvas
     if (canvas) {
       exportPNG(canvas, generateFilename('blocks', 'png'))
@@ -101,7 +117,17 @@ export default function Blocks() {
         <ButtonRow>
           <Button variant="secondary" onClick={randomize}>Randomize <Kbd>R</Kbd></Button>
           <Button variant="secondary" onClick={reset}>Reset <Kbd>⌫</Kbd></Button>
-          <Button variant="primary" onClick={download}>Download PNG <Kbd>⌘S</Kbd></Button>
+          {hasRasterEffects ? (
+            <>
+              <Button variant="primary" onClick={handleExportPNG}>Export PNG <Kbd>⌘S</Kbd></Button>
+              <Button variant="secondary" onClick={handleExportSVG}>Export SVG</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="primary" onClick={handleExportSVG}>Export SVG <Kbd>⌘S</Kbd></Button>
+              <Button variant="secondary" onClick={handleExportPNG}>Export PNG</Button>
+            </>
+          )}
         </ButtonRow>
       }>
         <h2 className="mb-3 text-base font-medium text-text-primary">Blocks</h2>

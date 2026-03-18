@@ -1,3 +1,7 @@
+export type RectBlock = { x: number; y: number; w: number; h: number }
+export type PolyBlock = { points: { x: number; y: number }[] }
+export type BlocksGeometry = { rects: RectBlock[]; polys: PolyBlock[]; width: number; height: number }
+
 export type BlocksSettings = {
   seed: number
   bgColor: string

@@ -1,5 +1,8 @@
 import type { ColorStop } from '@/types/tools'
 
+export type PathPoint = { x: number; y: number }
+export type OrganicGeometry = { paths: PathPoint[][]; width: number; height: number }
+
 export type FlowFieldSettings = {
   noiseScale: number
   turbulence: number

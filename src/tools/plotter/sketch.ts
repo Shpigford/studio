@@ -1,10 +1,21 @@
 import type p5 from 'p5'
 import type { RefObject } from 'react'
-import type { PlotterSettings } from './types'
+import type {
+  PlotterGeometry,
+  PlotterPathPrimitive,
+  PlotterPrimitiveShapeType,
+  PlotterSettings,
+  PlotterShapePrimitive,
+} from './types'
 
 interface Point {
   x: number
   y: number
+}
+
+type ExportStyle = {
+  color: string
+  filled: boolean
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,8 +36,73 @@ export const PALETTES: Record<string, string[]> = {
   pastels: ['#b39ddb', '#ce93d8', '#f8bbd9'],
 }
 
-export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSettings>) {
+export function createPlotterSketch(
+  p: p5,
+  settingsRef: RefObject<PlotterSettings>,
+  geometryRef?: RefObject<PlotterGeometry | null>,
+) {
   const ctx = () => p.drawingContext as CanvasRenderingContext2D
+  let svgElements: (PlotterShapePrimitive | PlotterPathPrimitive)[] = []
+  // Track current transform for converting local-space organic path points to world space
+  let activeTransform: { tx: number; ty: number; rot: number } | null = null
+
+  function toWorldSpace(pt: Point): Point {
+    if (!activeTransform) return { x: pt.x, y: pt.y }
+    const { tx, ty, rot } = activeTransform
+    const rad = (rot * Math.PI) / 180
+    const cos = Math.cos(rad)
+    const sin = Math.sin(rad)
+    return {
+      x: tx + pt.x * cos - pt.y * sin,
+      y: ty + pt.x * sin + pt.y * cos,
+    }
+  }
+
+  function toWorldRotation(rotationDegrees: number): number {
+    return rotationDegrees + (activeTransform?.rot ?? 0)
+  }
+
+  function pushPathPrimitive(
+    points: Point[],
+    closed: boolean,
+    color: string,
+    strokeWeight: number,
+    filled: boolean,
+  ) {
+    if (points.length < 2) return
+    svgElements.push({
+      type: 'path',
+      points: points.map(pt => toWorldSpace(pt)),
+      closed,
+      color,
+      strokeWeight,
+      filled,
+    })
+  }
+
+  function pushShapePrimitive(
+    shapeType: PlotterPrimitiveShapeType,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    rotationDegrees: number,
+    filled: boolean,
+    strokeWeight: number,
+  ) {
+    const world = toWorldSpace({ x, y })
+    svgElements.push({
+      type: 'shape',
+      shapeType,
+      x: world.x,
+      y: world.y,
+      size,
+      color,
+      rotation: toWorldRotation(rotationDegrees),
+      filled,
+      strokeWeight,
+    })
+  }
 
   function getContainerSize(): { w: number; h: number } {
     const el = (p as P5Any).canvas?.parentElement ?? document.body
@@ -60,6 +136,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
 
   function redrawCanvas() {
     const s = settingsRef.current
+    svgElements = []
 
     const target = getContainerSize()
     if (p.width !== target.w || p.height !== target.h) {
@@ -95,6 +172,16 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
 
     if (s.textureAmount > 0) {
       drawTexture(s)
+    }
+
+    if (geometryRef) {
+      geometryRef.current = {
+        elements: svgElements,
+        bgColor: s.bgColor,
+        width: p.width,
+        height: p.height,
+        margin: s.margin,
+      }
     }
   }
 
@@ -163,7 +250,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
       }
 
       if (points.length > 1) {
-        renderBrushPath(s, points, false)
+        renderBrushPath(s, points, false, { color: colors[colorIndex], filled: false })
       }
     }
   }
@@ -201,7 +288,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
         })
       }
 
-      renderBrushPath(s, points, true)
+      renderBrushPath(s, points, true, { color: colors[colorIndex], filled: false })
     }
   }
 
@@ -230,7 +317,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
         points.push({ x, y: baseY + wave + noiseOffset })
       }
 
-      renderBrushPath(s, points, false)
+      renderBrushPath(s, points, false, { color: colors[colorIndex], filled: false })
     }
   }
 
@@ -287,7 +374,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
         renderBrushPath(s, [
           { x: clipped.x1, y: clipped.y1 },
           { x: clipped.x2, y: clipped.y2 },
-        ], false)
+        ], false, { color: colors[colorIndex], filled: false })
       }
     }
   }
@@ -392,8 +479,11 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
     p.push()
     p.translate(x, y)
     p.rotate((s.rotation * Math.PI) / 180)
+    activeTransform = { tx: x, ty: y, rot: s.rotation }
 
     const hasOrganic = s.wobble > 0 || s.roughness > 0
+    const exportFilled = s.filled && s.shapeType !== 'line' && s.shapeType !== 'cross' && s.shapeType !== 'ring'
+    const exportStyle: ExportStyle = { color, filled: exportFilled }
 
     if (s.filled) {
       p.fill(color)
@@ -404,27 +494,33 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
       p.strokeWeight(s.strokeWeight)
     }
 
+    // For non-organic shapes, push a shape primitive for SVG export
+    if (!hasOrganic) {
+      pushShapePrimitive(s.shapeType, 0, 0, size, color, 0, exportFilled, s.strokeWeight)
+    }
+    // Organic shapes go through renderBrushPath which pushes path primitives
+
     switch (s.shapeType) {
       case 'circle':
-        if (hasOrganic) drawOrganicEllipse(s, 0, 0, size, size, x, y)
+        if (hasOrganic) drawOrganicEllipse(s, 0, 0, size, size, x, y, exportStyle)
         else p.ellipse(0, 0, size, size)
         break
       case 'square':
-        if (hasOrganic) drawOrganicRect(s, 0, 0, size, size, x, y)
+        if (hasOrganic) drawOrganicRect(s, 0, 0, size, size, x, y, exportStyle)
         else { p.rectMode(p.CENTER); p.rect(0, 0, size, size) }
         break
       case 'line':
         p.stroke(color)
         p.strokeWeight(s.strokeWeight)
-        if (hasOrganic) drawOrganicLine(s, -size / 2, 0, size / 2, 0, x, y)
+        if (hasOrganic) drawOrganicLine(s, -size / 2, 0, size / 2, 0, x, y, { color, filled: false })
         else p.line(-size / 2, 0, size / 2, 0)
         break
       case 'cross':
         p.stroke(color)
         p.strokeWeight(s.strokeWeight)
         if (hasOrganic) {
-          drawOrganicLine(s, -size / 2, 0, size / 2, 0, x, y)
-          drawOrganicLine(s, 0, -size / 2, 0, size / 2, x, y + 1000)
+          drawOrganicLine(s, -size / 2, 0, size / 2, 0, x, y, { color, filled: false })
+          drawOrganicLine(s, 0, -size / 2, 0, size / 2, x, y + 1000, { color, filled: false })
         } else {
           p.line(-size / 2, 0, size / 2, 0)
           p.line(0, -size / 2, 0, size / 2)
@@ -434,7 +530,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
         p.noFill()
         p.stroke(color)
         p.strokeWeight(s.strokeWeight)
-        if (hasOrganic) drawOrganicEllipse(s, 0, 0, size, size, x, y)
+        if (hasOrganic) drawOrganicEllipse(s, 0, 0, size, size, x, y, { color, filled: false })
         else p.ellipse(0, 0, size, size)
         break
       case 'diamond':
@@ -444,7 +540,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
             { x: size / 2, y: 0 },
             { x: 0, y: size / 2 },
             { x: -size / 2, y: 0 },
-          ], x, y)
+          ], x, y, exportStyle)
         } else {
           p.beginShape()
           p.vertex(0, -size / 2)
@@ -456,6 +552,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
         break
     }
 
+    activeTransform = null
     p.pop()
   }
 
@@ -479,7 +576,16 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
     return { x: px + offsetX, y: py + offsetY }
   }
 
-  function drawOrganicEllipse(s: PlotterSettings, cx: number, cy: number, w: number, h: number, seedX: number, seedY: number) {
+  function drawOrganicEllipse(
+    s: PlotterSettings,
+    cx: number,
+    cy: number,
+    w: number,
+    h: number,
+    seedX: number,
+    seedY: number,
+    style: ExportStyle,
+  ) {
     const segments = Math.max(12, Math.floor(Math.max(w, h) * 0.8))
     const points: Point[] = []
     for (let i = 0; i < segments; i++) {
@@ -488,10 +594,19 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
       const py = cy + Math.sin(angle) * h / 2
       points.push(applyWobble(s, px, py, seedX + i * 0.1, seedY + i * 0.1))
     }
-    renderBrushPath(s, points, true)
+    renderBrushPath(s, points, true, style)
   }
 
-  function drawOrganicRect(s: PlotterSettings, cx: number, cy: number, w: number, h: number, seedX: number, seedY: number) {
+  function drawOrganicRect(
+    s: PlotterSettings,
+    cx: number,
+    cy: number,
+    w: number,
+    h: number,
+    seedX: number,
+    seedY: number,
+    style: ExportStyle,
+  ) {
     const segs = Math.max(4, Math.floor(Math.max(w, h) * 0.2))
     const points: Point[] = []
 
@@ -512,10 +627,19 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
       points.push(applyWobble(s, cx - w / 2, cy + h / 2 - t * h, seedX + 300, seedY))
     }
 
-    renderBrushPath(s, points, true)
+    renderBrushPath(s, points, true, style)
   }
 
-  function drawOrganicLine(s: PlotterSettings, x1: number, y1: number, x2: number, y2: number, seedX: number, seedY: number) {
+  function drawOrganicLine(
+    s: PlotterSettings,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    seedX: number,
+    seedY: number,
+    style: ExportStyle,
+  ) {
     const d = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     const segments = Math.max(4, Math.floor(d * 0.3))
     const points: Point[] = []
@@ -528,13 +652,19 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
     }
 
     if (s.brushType === 'normal' && s.strokeTaper > 0) {
-      renderTaperedPath(s, points)
+      renderTaperedPath(s, points, style)
     } else {
-      renderBrushPath(s, points, false)
+      renderBrushPath(s, points, false, style)
     }
   }
 
-  function drawOrganicPolygon(s: PlotterSettings, inputPoints: Point[], seedX: number, seedY: number) {
+  function drawOrganicPolygon(
+    s: PlotterSettings,
+    inputPoints: Point[],
+    seedX: number,
+    seedY: number,
+    style: ExportStyle,
+  ) {
     const segs = Math.max(3, Math.floor(s.wobble + s.roughness) + 2)
     const points: Point[] = []
 
@@ -550,35 +680,37 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
       }
     }
 
-    renderBrushPath(s, points, true)
+    renderBrushPath(s, points, true, style)
   }
 
   // ── Brush System ──
 
-  function renderBrushPath(s: PlotterSettings, points: Point[], closed: boolean) {
+  function renderBrushPath(s: PlotterSettings, points: Point[], closed: boolean, style: ExportStyle) {
     if (points.length < 2) return
 
     switch (s.brushType) {
       case 'stippled':
-        renderStippledPath(s, points, closed)
+        renderStippledPath(s, points, closed, style)
         break
       case 'multiStroke':
-        renderMultiStrokePath(s, points, closed)
+        renderMultiStrokePath(s, points, closed, style)
         break
       case 'calligraphic':
-        renderCalligraphicPath(s, points, closed)
+        renderCalligraphicPath(s, points, closed, style)
         break
       case 'stamp':
-        renderStampPath(s, points, closed)
+        renderStampPath(s, points, closed, style)
         break
       case 'normal':
       default:
-        renderNormalPath(points, closed)
+        renderNormalPath(points, closed, style, s.strokeWeight)
         break
     }
   }
 
-  function renderNormalPath(points: Point[], closed: boolean) {
+  function renderNormalPath(points: Point[], closed: boolean, style: ExportStyle, strokeWeight: number) {
+    pushPathPrimitive(points, closed, style.color, strokeWeight, style.filled && closed)
+
     p.beginShape()
     for (const pt of points) {
       p.vertex(pt.x, pt.y)
@@ -586,14 +718,17 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
     p.endShape(closed ? p.CLOSE : undefined)
   }
 
-  function renderTaperedPath(s: PlotterSettings, points: Point[]) {
+  function renderTaperedPath(s: PlotterSettings, points: Point[], style: ExportStyle) {
     const baseWeight = s.strokeWeight
     const taper = s.strokeTaper
+    p.noFill()
+    p.stroke(style.color)
 
     for (let i = 0; i < points.length - 1; i++) {
       const t = (i + 0.5) / (points.length - 1)
       const taperAmount = Math.sin(t * Math.PI)
       const weight = baseWeight * (1 - taper + taper * taperAmount)
+      pushPathPrimitive([points[i], points[i + 1]], false, style.color, weight, false)
       p.strokeWeight(weight)
       p.line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y)
     }
@@ -601,15 +736,12 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
     p.strokeWeight(baseWeight)
   }
 
-  function renderStippledPath(s: PlotterSettings, points: Point[], closed: boolean) {
+  function renderStippledPath(s: PlotterSettings, points: Point[], closed: boolean, style: ExportStyle) {
     const spacing = s.stippled.dotSpacing
     const baseSize = s.stippled.dotSize
     const variation = s.stippled.sizeVariation
     const isDash = s.stippled.dash
     const dashLength = s.stippled.dashLength
-
-    const c = ctx()
-    const currentStroke = c.strokeStyle
 
     let accumulated = 0
     const totalPoints = closed ? points.length : points.length - 1
@@ -630,15 +762,20 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
         if (isDash) {
           const dx = Math.cos(angle) * dashLength / 2
           const dy = Math.sin(angle) * dashLength / 2
+          pushPathPrimitive([
+            { x: x - dx, y: y - dy },
+            { x: x + dx, y: y + dy },
+          ], false, style.color, s.strokeWeight, false)
           p.push()
-          p.stroke(currentStroke as string)
+          p.stroke(style.color)
           p.strokeWeight(s.strokeWeight)
           p.line(x - dx, y - dy, x + dx, y + dy)
           p.pop()
         } else {
+          pushShapePrimitive('circle', x, y, size, style.color, 0, true, 0)
           p.push()
           p.noStroke()
-          p.fill(currentStroke as string)
+          p.fill(style.color)
           p.ellipse(x, y, size, size)
           p.pop()
         }
@@ -649,7 +786,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
     }
   }
 
-  function renderMultiStrokePath(s: PlotterSettings, points: Point[], closed: boolean) {
+  function renderMultiStrokePath(s: PlotterSettings, points: Point[], closed: boolean, style: ExportStyle) {
     const count = s.multiStroke.count
     const spread = s.multiStroke.spread
     const variation = s.multiStroke.variation
@@ -658,6 +795,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
 
     for (let si = 0; si < count; si++) {
       const baseOffset = count > 1 ? ((si / (count - 1)) - 0.5) * spread : 0
+      const offsetPoints: Point[] = []
 
       p.beginShape()
       for (let i = 0; i < points.length; i++) {
@@ -665,21 +803,21 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
         const n = normals[i]
         const varOffset = (p.random() - 0.5) * variation * spread
         const totalOffset = baseOffset + varOffset
-        p.vertex(pt.x + n.x * totalOffset, pt.y + n.y * totalOffset)
+        const offsetPoint = { x: pt.x + n.x * totalOffset, y: pt.y + n.y * totalOffset }
+        offsetPoints.push(offsetPoint)
+        p.vertex(offsetPoint.x, offsetPoint.y)
       }
       p.endShape(closed ? p.CLOSE : undefined)
+      pushPathPrimitive(offsetPoints, closed, style.color, s.strokeWeight, style.filled && closed)
     }
   }
 
-  function renderCalligraphicPath(s: PlotterSettings, points: Point[], _closed: boolean) {
+  function renderCalligraphicPath(s: PlotterSettings, points: Point[], _closed: boolean, style: ExportStyle) {
     const penAngle = (s.calligraphic.angle * Math.PI) / 180
     const minWidth = s.calligraphic.minWidth
     const maxWidth = s.calligraphic.maxWidth
     const smoothing = s.calligraphic.smoothing
     const baseWeight = s.strokeWeight
-
-    const c = ctx()
-    const currentStroke = c.strokeStyle
 
     const leftEdge: Point[] = []
     const rightEdge: Point[] = []
@@ -711,9 +849,13 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
       rightEdge.push({ x: points[i].x + ox, y: points[i].y + oy })
     }
 
+    // Capture calligraphic shape as a filled path for SVG
+    const calliPoints: Point[] = [...leftEdge, ...rightEdge.slice().reverse()]
+    pushPathPrimitive(calliPoints, true, style.color, 0, true)
+
     p.push()
     p.noStroke()
-    p.fill(currentStroke as string)
+    p.fill(style.color)
     p.beginShape()
     for (const pt of leftEdge) p.vertex(pt.x, pt.y)
     for (let i = rightEdge.length - 1; i >= 0; i--) p.vertex(rightEdge[i].x, rightEdge[i].y)
@@ -721,7 +863,7 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
     p.pop()
   }
 
-  function renderStampPath(s: PlotterSettings, points: Point[], closed: boolean) {
+  function renderStampPath(s: PlotterSettings, points: Point[], closed: boolean, style: ExportStyle) {
     const spacing = s.stamp.spacing
     const baseSize = s.stamp.size
     const sizeVar = s.stamp.sizeVariation
@@ -729,9 +871,6 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
     const rotVar = (s.stamp.rotationVariation * Math.PI) / 180
     const scatter = s.stamp.scatter
     const shape = s.stamp.shape
-
-    const c = ctx()
-    const currentStroke = c.strokeStyle
 
     let accumulated = 0
     const totalPoints = closed ? points.length : points.length - 1
@@ -758,7 +897,8 @@ export function createPlotterSketch(p: p5, settingsRef: RefObject<PlotterSetting
         const size = baseSize * (1 + (p.random() - 0.5) * sizeVar * 2)
         const rot = baseRotation + (p.random() - 0.5) * rotVar * 2
 
-        drawStampShape(x, y, size, rot, shape, currentStroke as string)
+        pushShapePrimitive(shape, x, y, size, style.color, (rot * 180) / Math.PI, true, 0)
+        drawStampShape(x, y, size, rot, shape, style.color)
 
         pos += spacing
       }

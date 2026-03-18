@@ -1,11 +1,11 @@
 import type p5 from 'p5'
 import type { RefObject } from 'react'
-import type { TopoSettings } from './types'
+import type { TopoSettings, Point, ContourPath, TopoGeometry } from './types'
 import { hexToRgb } from '@/lib/color'
 
 const GRID_SIZE = 200
 
-const PALETTES: Record<string, string[]> = {
+export const PALETTES: Record<string, string[]> = {
   mono: ['#000000', '#333333', '#666666', '#999999', '#cccccc'],
   topo: ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51'],
   ocean: ['#03045e', '#0077b6', '#00b4d8', '#90e0ef', '#caf0f8'],
@@ -15,26 +15,20 @@ const PALETTES: Record<string, string[]> = {
   heat: ['#03071e', '#370617', '#6a040f', '#d00000', '#dc2f02', '#e85d04', '#f48c06', '#faa307', '#ffba08'],
 }
 
-interface Point {
-  x: number
-  y: number
-}
-
 interface Segment {
   p1: Point
   p2: Point
   level: number
 }
 
-interface ContourPath {
-  points: Point[]
-  level: number
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type P5Any = any
 
-export function createTopoSketch(p: p5, settingsRef: RefObject<TopoSettings>) {
+export function createTopoSketch(
+  p: p5,
+  settingsRef: RefObject<TopoSettings>,
+  geometryRef?: RefObject<TopoGeometry | null>,
+) {
   let elevationField: number[][] = []
   let contours: ContourPath[] = []
   const ctx = () => p.drawingContext as CanvasRenderingContext2D
@@ -291,13 +285,20 @@ export function createTopoSketch(p: p5, settingsRef: RefObject<TopoSettings>) {
     p.strokeCap(p.ROUND)
     p.strokeJoin(p.ROUND)
 
+    const renderedContours: ContourPath[] = []
+
     for (const contour of contours) {
-      renderContour(contour, s)
+      const rendered = renderContour(contour, s)
+      if (rendered) renderedContours.push(rendered)
+    }
+
+    if (geometryRef) {
+      geometryRef.current = { contours: renderedContours, width: p.width, height: p.height }
     }
   }
 
-  function renderContour(contour: ContourPath, s: TopoSettings) {
-    if (contour.points.length < 2) return
+  function renderContour(contour: ContourPath, s: TopoSettings): ContourPath | null {
+    if (contour.points.length < 2) return null
 
     if (s.colorMode === 'single') {
       const rgb = hexToRgb(s.lineColor || '#222222')
@@ -323,6 +324,8 @@ export function createTopoSketch(p: p5, settingsRef: RefObject<TopoSettings>) {
     } else {
       drawPath(points)
     }
+
+    return { points, level: contour.level }
   }
 
   function getContourColor(level: number, s: TopoSettings): p5.Color {

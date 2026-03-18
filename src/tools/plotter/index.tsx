@@ -1,7 +1,9 @@
-import { useRef } from 'react'
+import { useCallback, useRef } from 'react'
+import type { RefObject } from 'react'
+import type p5 from 'p5'
 import { useSettings } from '@/hooks/use-settings'
 import { useP5 } from '@/hooks/use-p5'
-import { exportPNG, generateFilename } from '@/lib/export'
+import { exportPNG, exportSVG, generateFilename } from '@/lib/export'
 import { CanvasArea } from '@/components/canvas-area'
 import { Sidebar } from '@/components/sidebar'
 import { Section } from '@/components/controls/section'
@@ -14,7 +16,8 @@ import { Button } from '@/components/ui/button'
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
 import { createPlotterSketch, PALETTES } from './sketch'
-import type { PlotterSettings } from './types'
+import { generatePlotterSvg } from './svg'
+import type { PlotterSettings, PlotterGeometry } from './types'
 
 const BG_COLORS = ['#f5f5dc', '#faf0e6', '#fff8e7', '#f0f0f0', '#1a1a1a', '#0d0d0d', '#f5f5f5', '#e8e4d9']
 
@@ -77,9 +80,15 @@ const showBrushControls = (t: string) => t === 'flowField' || t === 'concentric'
 
 export default function Plotter() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const geometryRef = useRef<PlotterGeometry | null>(null)
   const [settings, update, reset] = useSettings<PlotterSettings>('plotter', DEFAULTS)
-  const p5Ref = useP5(containerRef, createPlotterSketch, settings)
-  useShortcutActions({ randomize, reset, download })
+  const sketchFn = useCallback(
+    (p: p5, settingsRef: RefObject<PlotterSettings>) => createPlotterSketch(p, settingsRef, geometryRef),
+    [],
+  )
+  const p5Ref = useP5(containerRef, sketchFn, settings)
+  const hasRasterEffects = settings.textureAmount > 0
+  useShortcutActions({ randomize, reset, download: hasRasterEffects ? handleExportPNG : handleExportSVG })
 
   function handlePaletteChange(name: string) {
     if (name === 'custom') {
@@ -194,7 +203,14 @@ export default function Plotter() {
     })
   }
 
-  function download() {
+  function handleExportSVG() {
+    const geo = geometryRef.current
+    if (!geo) return
+    const svg = generatePlotterSvg(geo)
+    if (svg) exportSVG(svg, generateFilename('plotter', 'svg'))
+  }
+
+  function handleExportPNG() {
     const canvas = (p5Ref.current as unknown as { canvas: HTMLCanvasElement })?.canvas
     if (canvas) exportPNG(canvas, generateFilename('plotter', 'png'))
   }
@@ -205,7 +221,17 @@ export default function Plotter() {
         <ButtonRow>
           <Button variant="secondary" onClick={randomize}>Randomize <Kbd>R</Kbd></Button>
           <Button variant="secondary" onClick={reset}>Reset <Kbd>⌫</Kbd></Button>
-          <Button variant="primary" onClick={download}>Download PNG <Kbd>⌘S</Kbd></Button>
+          {hasRasterEffects ? (
+            <>
+              <Button variant="primary" onClick={handleExportPNG}>Export PNG <Kbd>⌘S</Kbd></Button>
+              <Button variant="secondary" onClick={handleExportSVG}>Export SVG</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="primary" onClick={handleExportSVG}>Export SVG <Kbd>⌘S</Kbd></Button>
+              <Button variant="secondary" onClick={handleExportPNG}>Export PNG</Button>
+            </>
+          )}
         </ButtonRow>
       }>
         <h2 className="mb-3 text-base font-medium text-text-primary">Plotter</h2>
