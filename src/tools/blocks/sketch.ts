@@ -1,6 +1,6 @@
 import type p5 from 'p5'
 import type { RefObject } from 'react'
-import type { BlocksSettings } from './types'
+import type { BlocksSettings, RectBlock, PolyBlock, BlocksGeometry } from './types'
 import { seededRandom } from '@/lib/math'
 
 export const PALETTES: Record<string, string[]> = {
@@ -17,18 +17,14 @@ export const CANVAS_SIZES: Record<string, [number, number]> = {
   portrait: [768, 1024],
 }
 
-interface RectBlock {
-  x: number
-  y: number
-  w: number
-  h: number
+export function pickColor(rng: () => number, colorDensity: number, colors: string[]): string {
+  if (rng() < colorDensity) {
+    return colors[Math.floor(rng() * 3) % colors.length]
+  }
+  return colors[Math.floor(rng() * 2 + 3) % colors.length]
 }
 
-interface PolyBlock {
-  points: { x: number; y: number }[]
-}
-
-export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>) {
+export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>, geometryRef?: RefObject<BlocksGeometry | null>) {
   const ctx = () => p.drawingContext as CanvasRenderingContext2D
 
   // Cached geometry
@@ -91,6 +87,11 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
       if (lk !== cachedLayoutKey) {
         computeLayout(s)
         cachedLayoutKey = lk
+      }
+
+      // Expose geometry for SVG export
+      if (geometryRef) {
+        geometryRef.current = { rects: cachedRects, polys: cachedPolys, width: p.width, height: p.height }
       }
 
       // Assign colors deterministically
@@ -165,13 +166,6 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
     if (s.texture > 0 || s.grain > 0 || s.halftone > 0) {
       applyEffects(s)
     }
-  }
-
-  function pickColor(rng: () => number, colorDensity: number, colors: string[]): string {
-    if (rng() < colorDensity) {
-      return colors[Math.floor(rng() * 3) % colors.length]
-    }
-    return colors[Math.floor(rng() * 2 + 3) % colors.length]
   }
 
   function computeLayout(s: BlocksSettings) {

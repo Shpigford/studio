@@ -1,7 +1,9 @@
-import { useRef } from 'react'
+import { useCallback, useRef } from 'react'
+import type { RefObject } from 'react'
+import type p5 from 'p5'
 import { useSettings } from '@/hooks/use-settings'
 import { useP5 } from '@/hooks/use-p5'
-import { exportPNG, generateFilename } from '@/lib/export'
+import { exportPNG, exportSVG, generateFilename } from '@/lib/export'
 import { CanvasArea } from '@/components/canvas-area'
 import { Sidebar } from '@/components/sidebar'
 import { Section } from '@/components/controls/section'
@@ -13,7 +15,8 @@ import { Button } from '@/components/ui/button'
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
 import { createTopoSketch } from './sketch'
-import type { TopoSettings } from './types'
+import { generateTopoSvg } from './svg'
+import type { TopoSettings, TopoGeometry } from './types'
 
 const DEFAULTS: TopoSettings = {
   seed: 12345,
@@ -55,9 +58,15 @@ function randomColor(): string {
 
 export default function Topo() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const geometryRef = useRef<TopoGeometry | null>(null)
   const [settings, update, reset] = useSettings<TopoSettings>('topo', DEFAULTS)
-  const p5Ref = useP5(containerRef, createTopoSketch, settings)
-  useShortcutActions({ randomize, reset, download })
+  const sketchFn = useCallback(
+    (p: p5, settingsRef: RefObject<TopoSettings>) => createTopoSketch(p, settingsRef, geometryRef),
+    [],
+  )
+  const p5Ref = useP5(containerRef, sketchFn, settings)
+  const hasRasterEffects = settings.grain > 0
+  useShortcutActions({ randomize, reset, download: hasRasterEffects ? handleExportPNG : handleExportSVG })
 
   function randomize() {
     const paletteNames = ['mono', 'topo', 'ocean', 'earth', 'sunset', 'forest', 'heat']
@@ -108,7 +117,14 @@ export default function Topo() {
     })
   }
 
-  function download() {
+  function handleExportSVG() {
+    const geo = geometryRef.current
+    if (!geo) return
+    const svg = generateTopoSvg(geo, settings)
+    if (svg) exportSVG(svg, generateFilename('topo', 'svg'))
+  }
+
+  function handleExportPNG() {
     const canvas = (p5Ref.current as unknown as { canvas: HTMLCanvasElement })?.canvas
     if (canvas) {
       exportPNG(canvas, generateFilename('topo', 'png'))
@@ -121,7 +137,17 @@ export default function Topo() {
         <ButtonRow>
           <Button variant="secondary" onClick={randomize}>Randomize <Kbd>R</Kbd></Button>
           <Button variant="secondary" onClick={reset}>Reset <Kbd>⌫</Kbd></Button>
-          <Button variant="primary" onClick={download}>Download PNG <Kbd>⌘S</Kbd></Button>
+          {hasRasterEffects ? (
+            <>
+              <Button variant="primary" onClick={handleExportPNG}>Export PNG <Kbd>⌘S</Kbd></Button>
+              <Button variant="secondary" onClick={handleExportSVG}>Export SVG</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="primary" onClick={handleExportSVG}>Export SVG <Kbd>⌘S</Kbd></Button>
+              <Button variant="secondary" onClick={handleExportPNG}>Export PNG</Button>
+            </>
+          )}
         </ButtonRow>
       }>
         <h2 className="mb-3 text-base font-medium text-text-primary">Topo</h2>

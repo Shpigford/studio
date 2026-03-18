@@ -1,12 +1,7 @@
 import type p5 from 'p5'
 import type { RefObject } from 'react'
-import type { OrganicSettings } from './types'
+import type { OrganicSettings, PathPoint, OrganicGeometry } from './types'
 import { hexToRgb } from '@/lib/color'
-
-interface PathPoint {
-  x: number
-  y: number
-}
 
 interface ParsedStop {
   r: number
@@ -18,7 +13,7 @@ interface ParsedStop {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type P5Any = any
 
-export function createOrganicSketch(p: p5, settingsRef: RefObject<OrganicSettings>) {
+export function createOrganicSketch(p: p5, settingsRef: RefObject<OrganicSettings>, geometryRef?: RefObject<OrganicGeometry | null>) {
   const ctx = () => p.drawingContext as CanvasRenderingContext2D
 
   // Cached paths — recompute only when geometry-affecting settings change
@@ -118,8 +113,14 @@ export function createOrganicSketch(p: p5, settingsRef: RefObject<OrganicSetting
 
     // Render paths using direct canvas API
     const totalPaths = cachedPaths.length
+    const collectedPaths: PathPoint[][] = []
     for (let i = 0; i < totalPaths; i++) {
-      renderPath(cachedPaths[i], i, s, parsedStops, gradientConsts, c)
+      const processed = renderPath(cachedPaths[i], i, s, parsedStops, gradientConsts, c)
+      if (processed) collectedPaths.push(processed)
+    }
+
+    if (geometryRef) {
+      geometryRef.current = { paths: collectedPaths, width: p.width, height: p.height }
     }
 
     if (pad > 0) {
@@ -333,8 +334,8 @@ export function createOrganicSketch(p: p5, settingsRef: RefObject<OrganicSetting
     parsedStops: ParsedStop[],
     gc: GradientConsts,
     c: CanvasRenderingContext2D,
-  ) {
-    if (path.length < 2) return
+  ): PathPoint[] | null {
+    if (path.length < 2) return null
 
     const len = path.length
     const invLen = 1 / (len - 1)
@@ -439,6 +440,13 @@ export function createOrganicSketch(p: p5, settingsRef: RefObject<OrganicSetting
         c.stroke()
       }
     }
+
+    // Convert processed points back to PathPoint[]
+    const result: PathPoint[] = new Array(len)
+    for (let i = 0; i < len; i++) {
+      result[i] = { x: px[i], y: py[i] }
+    }
+    return result
   }
 
   // ============================================

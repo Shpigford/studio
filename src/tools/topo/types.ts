@@ -1,3 +1,7 @@
+export type Point = { x: number; y: number }
+export type ContourPath = { points: Point[]; level: number }
+export type TopoGeometry = { contours: ContourPath[]; width: number; height: number }
+
 export type TopoSettings = {
   seed: number
   contourLevels: number
