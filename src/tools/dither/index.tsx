@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { PaletteColor } from "@/types/tools"
 import { useSettings } from "@/hooks/use-settings"
 import { CanvasArea } from "@/components/canvas-area"
 import { Sidebar } from "@/components/sidebar"
@@ -20,81 +19,16 @@ import {
   renderDither,
 } from "./engine"
 import { generateDitherSvg } from "./svg"
-
-const GAMEBOY_PRESET: PaletteColor[] = [
-  { color: "#0f380f", weight: 1 },
-  { color: "#306230", weight: 1 },
-  { color: "#8bac0f", weight: 1 },
-  { color: "#9bbc0f", weight: 1 },
-]
-
-const PALETTE_PRESETS = [
-  {
-    name: "B&W",
-    colors: [
-      { color: "#000000", weight: 1 },
-      { color: "#ffffff", weight: 1 },
-    ],
-  },
-  { name: "Game Boy", colors: GAMEBOY_PRESET },
-  {
-    name: "CGA",
-    colors: [
-      { color: "#000000", weight: 1 },
-      { color: "#55ffff", weight: 1 },
-      { color: "#ff55ff", weight: 1 },
-      { color: "#ffffff", weight: 1 },
-    ],
-  },
-  {
-    name: "Sepia",
-    colors: [
-      { color: "#2b1d0e", weight: 1 },
-      { color: "#6b4226", weight: 1 },
-      { color: "#c4956a", weight: 1 },
-      { color: "#f5e6c8", weight: 1 },
-    ],
-  },
-]
-
-const DEFAULTS: DitherSettings = {
-  sourceType: "gradient",
-  gradientType: "linear",
-  gradientAngle: 45,
-  aspectRatio: "1:1",
-  gradientWidth: 512,
-  gradientHeight: 512,
-  pattern: "bayer4",
-  ditherMode: "image",
-  ditherStyle: "threshold",
-  shapeType: "square",
-  cellSize: 8,
-  angle: 45,
-  scale: 100,
-  offsetX: 0,
-  offsetY: 0,
-  colors: GAMEBOY_PRESET,
-}
-
-const PATTERN_OPTIONS = [
-  { value: "bayer2", label: "Bayer 2x2" },
-  { value: "bayer4", label: "Bayer 4x4" },
-  { value: "bayer8", label: "Bayer 8x8" },
-  { value: "halftone", label: "Halftone" },
-  { value: "lines", label: "Lines" },
-  { value: "crosses", label: "Crosses" },
-  { value: "dots", label: "Dots" },
-  { value: "grid", label: "Grid" },
-  { value: "scales", label: "Scales" },
-]
-
-const ASPECT_OPTIONS = [
-  { value: "1:1", label: "1:1" },
-  { value: "16:9", label: "16:9" },
-  { value: "4:3", label: "4:3" },
-  { value: "3:2", label: "3:2" },
-  { value: "custom", label: "Custom" },
-]
+import {
+  ASPECT_OPTIONS,
+  DEFAULTS,
+  PALETTE_PRESETS,
+  PATTERN_OPTIONS,
+} from "./config"
+import {
+  createRandomPalette,
+  createRandomSettingsPatch,
+} from "./randomize"
 
 function getGradientHeight(
   width: number,
@@ -107,7 +41,7 @@ function getGradientHeight(
 }
 
 export default function Dither() {
-  const [settings, update] = useSettings<DitherSettings>("dither", DEFAULTS)
+  const [settings, update, reset] = useSettings<DitherSettings>("dither", DEFAULTS)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const sourceImageRef = useRef<HTMLImageElement | null>(null)
@@ -251,13 +185,23 @@ export default function Dither() {
     if (svg) exportSVG(svg, generateFilename("dither", "svg"))
   }, [settings, buildEngineSettings])
 
-  useShortcutActions({ download: handleExportSVG })
+  const randomizeColors = useCallback(() => {
+    update({ colors: createRandomPalette() })
+  }, [update])
+
+  const randomize = useCallback(() => {
+    update(createRandomSettingsPatch())
+  }, [update])
+
+  useShortcutActions({ randomize, reset, download: handleExportSVG })
 
   return (
     <>
       <Sidebar
         footer={
           <ButtonRow>
+            <Button variant="secondary" onClick={randomize}>Randomize <Kbd>R</Kbd></Button>
+            <Button variant="secondary" onClick={reset}>Reset <Kbd>⌫</Kbd></Button>
             <Button
               variant="primary"
               className="w-full"
@@ -472,6 +416,7 @@ export default function Dither() {
               colors={settings.colors}
               onChange={(colors) => update({ colors })}
               presets={PALETTE_PRESETS}
+              onRandomize={randomizeColors}
             />
           </Section>
         </div>

@@ -7,17 +7,20 @@ import {
   PopoverContent,
 } from "@/components/ui/popover"
 import { HexColorPicker } from "react-colorful"
+import { Shuffle } from "lucide-react"
 
 interface PaletteEditorProps {
   colors: PaletteColor[]
   onChange: (colors: PaletteColor[]) => void
   presets?: { name: string; colors: PaletteColor[] }[]
+  onRandomize?: () => void
 }
 
 export function PaletteEditor({
   colors,
   onChange,
   presets,
+  onRandomize,
 }: PaletteEditorProps) {
   const totalWeight = colors.reduce((sum, c) => sum + c.weight, 0)
 
@@ -37,9 +40,15 @@ export function PaletteEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      {presets && presets.length > 0 && (
+      {(onRandomize || (presets && presets.length > 0)) && (
         <div className="flex flex-wrap gap-1">
-          {presets.map((preset) => (
+          {onRandomize && (
+            <Button variant="secondary" size="sm" onClick={onRandomize}>
+              <Shuffle className="mr-1 h-3 w-3" />
+              Random
+            </Button>
+          )}
+          {presets?.map((preset) => (
             <Button
               key={preset.name}
               variant="secondary"

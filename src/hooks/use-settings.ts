@@ -117,6 +117,12 @@ export function useSettings<T extends Record<string, unknown>>(
   );
 
   const reset = useCallback(() => {
+    // Reset must win over any in-flight debounced write from a prior update.
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    pendingRef.current = null;
     setSettings(defaults);
     localStorage.setItem(storageKey, JSON.stringify(defaults));
   }, [defaults, storageKey]);
