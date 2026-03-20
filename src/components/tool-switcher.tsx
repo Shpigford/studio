@@ -1,14 +1,29 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { NavLink, useLocation } from "react-router-dom"
+import { Bookmark } from "lucide-react"
 import { tools, pages } from "@/tools/registry"
 import { ToolIcon } from "@/components/icons"
 import { useMobile } from "@/hooks/use-mobile"
+import { SavedDesignsPanel } from "@/components/saved-designs-panel"
 
 export function ToolSwitcher() {
   const isMobile = useMobile()
   const [open, setOpen] = useState(false)
+  const [savedOpen, setSavedOpen] = useState(false)
+  const [bounce, setBounce] = useState(false)
+  const savedBtnRef = useRef<HTMLButtonElement>(null)
   const currentToolId = useLocation().pathname.slice(1)
   const currentTool = [...tools, ...pages].find((t) => t.id === currentToolId) ?? tools[0]
+
+  // Animate bookmark icon when a design is saved
+  useEffect(() => {
+    const handler = () => {
+      setBounce(true)
+      setTimeout(() => setBounce(false), 600)
+    }
+    window.addEventListener('studio:designs-changed', handler)
+    return () => window.removeEventListener('studio:designs-changed', handler)
+  }, [])
 
   if (isMobile) {
     return (
@@ -21,6 +36,19 @@ export function ToolSwitcher() {
         >
           <ToolIcon tool={currentTool.id} className="h-6 w-6" />
         </button>
+
+        {/* Floating saved button */}
+        <button
+          onClick={() => setSavedOpen(true)}
+          className={`fixed top-3 left-14 z-40 flex h-9 w-9 items-center justify-center rounded-lg border border-border-control bg-sidebar ${
+            bounce ? "text-yellow-400 scale-150" : "text-text-muted"
+          }`}
+          style={bounce ? { transition: 'all 300ms cubic-bezier(0.34, 1.56, 0.64, 1)' } : undefined}
+          aria-label="Saved designs"
+        >
+          <Bookmark className="h-4 w-4" fill={bounce ? 'currentColor' : 'none'} />
+        </button>
+        <SavedDesignsPanel open={savedOpen} onOpenChange={setSavedOpen} />
 
         {/* Tool picker overlay */}
         {open && (
@@ -102,6 +130,22 @@ export function ToolSwitcher() {
         </NavLink>
       ))}
       <div className="mt-auto" />
+      <button
+        ref={savedBtnRef}
+        onClick={() => setSavedOpen(true)}
+        className="flex flex-col items-center gap-1.5"
+        aria-label="Saved designs"
+      >
+        <div
+          className={`rounded-lg p-1 transition-all duration-150 ${
+            bounce ? "text-yellow-400 scale-150" : "text-text-muted hover:text-text-secondary"
+          }`}
+          style={bounce ? { transition: 'all 300ms cubic-bezier(0.34, 1.56, 0.64, 1)' } : undefined}
+        >
+          <Bookmark className="h-5 w-5" fill={bounce ? 'currentColor' : 'none'} />
+        </div>
+        <span className={`text-[9px] leading-none transition-colors duration-150 ${bounce ? "text-yellow-400" : "text-text-muted"}`}>Saved</span>
+      </button>
       {pages.map((page) => (
         <NavLink
           key={page.id}
@@ -130,6 +174,7 @@ export function ToolSwitcher() {
           )}
         </NavLink>
       ))}
+      <SavedDesignsPanel open={savedOpen} onOpenChange={setSavedOpen} />
     </nav>
   )
 }

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
 import { exportPNG, exportSVG, generateFilename } from "@/lib/export"
+import { getSourceImage, setSourceImage } from "@/lib/source-image"
 import type { DitherSettings } from "./types"
 import {
   generateGradientGrid,
@@ -142,19 +143,48 @@ export default function Dither() {
   }, [render, gridVersion])
 
   // Image upload handler
-  const handleImageFile = useCallback(
-    (file: File) => {
+  const loadImageFromDataUrl = useCallback(
+    (dataUrl: string) => {
       const img = new Image()
       img.onload = () => {
         sourceImageRef.current = img
+        setSourceImage('dither', dataUrl)
         gridRef.current = processImageToGrid(img, settings.cellSize)
         update({ sourceType: "image" })
         setGridVersion((v) => v + 1)
       }
-      img.src = URL.createObjectURL(file)
+      img.src = dataUrl
     },
     [update, settings.cellSize],
   )
+
+  const handleImageFile = useCallback(
+    (file: File) => {
+      const reader = new FileReader()
+      reader.onload = () => loadImageFromDataUrl(reader.result as string)
+      reader.readAsDataURL(file)
+    },
+    [loadImageFromDataUrl],
+  )
+
+  // Restore source image on mount (when navigating from saved designs panel)
+  // and on settings-loaded event (when already on this tool)
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      const src = getSourceImage('dither')
+      if (src && !sourceImageRef.current) loadImageFromDataUrl(src)
+    }
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.key !== 'studio:dither') return
+      const src = getSourceImage('dither')
+      if (src) loadImageFromDataUrl(src)
+    }
+    window.addEventListener('studio:settings-loaded', handler)
+    return () => window.removeEventListener('studio:settings-loaded', handler)
+  }, [loadImageFromDataUrl])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()

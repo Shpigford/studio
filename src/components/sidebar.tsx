@@ -1,11 +1,49 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useMobile } from '@/hooks/use-mobile'
 import { shortcutActions } from '@/lib/shortcut-actions'
+import { saveDesign } from '@/lib/saved-designs'
 import { Kbd } from '@/components/ui/kbd'
 
 interface SidebarProps {
   children: React.ReactNode
   footer?: React.ReactNode
+}
+
+function SaveDesignButton() {
+  const [status, setStatus] = useState<'idle' | 'saved' | 'duplicate'>('idle')
+  const toolId = useLocation().pathname.slice(1)
+
+  useEffect(() => {
+    shortcutActions.save = () => {
+      const canvas = document.querySelector('canvas') as HTMLCanvasElement | null
+      if (!canvas || !toolId) return
+      const settings = shortcutActions.getSettings?.()
+      if (!settings) return
+      saveDesign(toolId, settings, canvas).then((result) => {
+        setStatus(result ? 'saved' : 'duplicate')
+        setTimeout(() => setStatus('idle'), 1500)
+        if (result) {
+          window.dispatchEvent(new CustomEvent('studio:designs-changed'))
+        }
+      })
+    }
+    return () => {
+      shortcutActions.save = null
+    }
+  }, [toolId])
+
+  const label =
+    status === 'saved' ? 'Saved!' : status === 'duplicate' ? 'Already saved' : null
+
+  return (
+    <button
+      onClick={() => shortcutActions.save?.()}
+      className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md text-xs text-text-muted transition-colors duration-150 hover:text-text-primary"
+    >
+      {label ?? <>Save Design <Kbd>S</Kbd></>}
+    </button>
+  )
 }
 
 function CopyLinkButton() {
@@ -42,7 +80,10 @@ function SidebarInner({ children, footer }: SidebarProps) {
         </div>
       )}
       <div className="shrink-0 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <CopyLinkButton />
+        <div className="flex gap-1">
+          <SaveDesignButton />
+          <CopyLinkButton />
+        </div>
       </div>
     </>
   )

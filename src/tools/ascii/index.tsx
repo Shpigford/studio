@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react"
+import { useCallback, useRef, useEffect } from "react"
 import { useSettings } from "@/hooks/use-settings"
 import { useP5 } from "@/hooks/use-p5"
 import { exportPNG, generateFilename } from "@/lib/export"
@@ -13,6 +13,7 @@ import { ButtonRow } from "@/components/controls/button-row"
 import { Button } from "@/components/ui/button"
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
+import { getSourceImage, setSourceImage } from "@/lib/source-image"
 import { createAsciiSketch } from "./sketch"
 import type { AsciiSettings, SetConfig } from "./types"
 import type p5 from "p5"
@@ -218,17 +219,46 @@ export default function Ascii() {
 
   const p5Ref = useP5(containerRef, sketchFn, settings)
 
-  const handleImageFile = useCallback(
-    (file: File) => {
+  const loadImageFromDataUrl = useCallback(
+    (dataUrl: string) => {
       const img = new Image()
       img.onload = () => {
         imageRef.current = img
+        setSourceImage('ascii', dataUrl)
         update({ imageVersion: settings.imageVersion + 1 })
       }
-      img.src = URL.createObjectURL(file)
+      img.src = dataUrl
     },
     [update, settings.imageVersion],
   )
+
+  const handleImageFile = useCallback(
+    (file: File) => {
+      const reader = new FileReader()
+      reader.onload = () => loadImageFromDataUrl(reader.result as string)
+      reader.readAsDataURL(file)
+    },
+    [loadImageFromDataUrl],
+  )
+
+  // Restore source image on mount (when navigating from saved designs panel)
+  // and on settings-loaded event (when already on this tool)
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      const src = getSourceImage('ascii')
+      if (src && !imageRef.current) loadImageFromDataUrl(src)
+    }
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.key !== 'studio:ascii') return
+      const src = getSourceImage('ascii')
+      if (src) loadImageFromDataUrl(src)
+    }
+    window.addEventListener('studio:settings-loaded', handler)
+    return () => window.removeEventListener('studio:settings-loaded', handler)
+  }, [loadImageFromDataUrl])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()

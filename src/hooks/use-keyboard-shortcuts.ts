@@ -43,6 +43,11 @@ export function useKeyboardShortcuts() {
         return
       }
 
+      if (e.key === 's' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        shortcutActions.save?.()
+        return
+      }
+
       if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
         shortcutActions.reset?.()

@@ -45,9 +45,34 @@ export function useSettings<T extends Record<string, unknown>>(
     }
     return defaults;
   });
+  const latestRef = useRef(settings);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<T | null>(null);
+
+  useEffect(() => {
+    latestRef.current = settings;
+  }, [settings]);
+
+  const flushPendingWrite = useCallback(() => {
+    if (!timerRef.current) return;
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
+    if (pendingRef.current !== null) {
+      const next = pendingRef.current;
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      latestRef.current = next;
+      pendingRef.current = null;
+    }
+  }, [storageKey]);
+
+  const clearPendingWrite = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    pendingRef.current = null;
+  }, []);
 
   // Debounced write to localStorage
   const writeToStorage = useCallback(
@@ -64,31 +89,15 @@ export function useSettings<T extends Record<string, unknown>>(
 
   // Flush pending write on unmount so settings aren't lost
   useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        if (pendingRef.current !== null) {
-          localStorage.setItem(storageKey, JSON.stringify(pendingRef.current));
-        }
-      }
-    };
-  }, [storageKey]);
+    return flushPendingWrite;
+  }, [flushPendingWrite]);
 
   // Register copyLink shortcut action
   useEffect(() => {
     shortcutActions.copyLink = () => {
-      // Flush pending debounced write
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        if (pendingRef.current !== null) {
-          localStorage.setItem(storageKey, JSON.stringify(pendingRef.current));
-          pendingRef.current = null;
-        }
-      }
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return;
       try {
-        const current = JSON.parse(raw) as Record<string, unknown>;
+        flushPendingWrite();
+        const current = latestRef.current as Record<string, unknown>;
         const diff = settingsToDiff(current, defaultsRef.current);
         const hasChanges = Object.keys(diff).length > 0;
         const url = hasChanges
@@ -100,10 +109,36 @@ export function useSettings<T extends Record<string, unknown>>(
         // clipboard or encoding failure — silently ignore
       }
     };
+    shortcutActions.getSettings = () => {
+      flushPendingWrite();
+      return latestRef.current;
+    };
     return () => {
       shortcutActions.copyLink = null;
+      shortcutActions.getSettings = null;
     };
-  }, [key, storageKey]);
+  }, [flushPendingWrite, key]);
+
+  // Listen for settings-loaded events (from loading saved designs)
+  useEffect(() => {
+    function onSettingsLoaded(e: Event) {
+      const detail = (e as CustomEvent).detail
+      if (detail?.key !== storageKey) return
+      try {
+        clearPendingWrite()
+        const raw = localStorage.getItem(storageKey)
+        if (raw) {
+          const next = { ...defaults, ...JSON.parse(raw) }
+          latestRef.current = next
+          setSettings(next)
+        }
+      } catch {
+        // ignore
+      }
+    }
+    window.addEventListener('studio:settings-loaded', onSettingsLoaded)
+    return () => window.removeEventListener('studio:settings-loaded', onSettingsLoaded)
+  }, [clearPendingWrite, defaults, storageKey])
 
   const update = useCallback(
     (patch: Partial<T>) => {
@@ -118,14 +153,11 @@ export function useSettings<T extends Record<string, unknown>>(
 
   const reset = useCallback(() => {
     // Reset must win over any in-flight debounced write from a prior update.
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    pendingRef.current = null;
+    clearPendingWrite();
+    latestRef.current = defaults;
     setSettings(defaults);
     localStorage.setItem(storageKey, JSON.stringify(defaults));
-  }, [defaults, storageKey]);
+  }, [clearPendingWrite, defaults, storageKey]);
 
   return [settings, update, reset];
 }
