@@ -27,6 +27,39 @@ export function constrain(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+function decimalPlaces(value: number): number {
+  const text = value.toString();
+  if (text.includes("e-")) {
+    const [coefficient, exponent] = text.split("e-");
+    const fractionLength = coefficient.split(".")[1]?.length ?? 0;
+    return fractionLength + Number(exponent);
+  }
+  return text.split(".")[1]?.length ?? 0;
+}
+
+/**
+ * Snap a value to a stepped range while staying inside [min, max].
+ * Supports bounds that are not perfectly aligned with the step grid.
+ */
+export function normalizeSteppedValue(
+  value: number,
+  min: number,
+  max: number,
+  step: number,
+  precision = 0,
+): number {
+  const clamped = constrain(value, min, max);
+  const snapped = min + Math.round((clamped - min) / step) * step;
+  const bounded = constrain(snapped, min, max);
+  const places = Math.max(
+    precision,
+    decimalPlaces(step),
+    decimalPlaces(min),
+    decimalPlaces(max),
+  );
+  return constrain(Number(bounded.toFixed(places)), min, max);
+}
+
 /** Inclusive random integer via Math.random. */
 export function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { seededRandom, mapRange, constrain, randomInt } from "./math";
+import {
+  seededRandom,
+  mapRange,
+  constrain,
+  normalizeSteppedValue,
+  randomInt,
+} from "./math";
 
 describe("seededRandom", () => {
   it("produces deterministic output", () => {
@@ -62,5 +68,16 @@ describe("randomInt", () => {
       expect(v).toBeLessThanOrEqual(7);
       expect(Number.isInteger(v)).toBe(true);
     }
+  });
+});
+
+describe("normalizeSteppedValue", () => {
+  it("keeps max values inside the range when max is off-step", () => {
+    expect(normalizeSteppedValue(6.28, 0, 6.28, 0.1, 1)).toBe(6.28);
+  });
+
+  it("snaps relative to min instead of absolute zero", () => {
+    expect(normalizeSteppedValue(6, 5, 25, 10)).toBe(5);
+    expect(normalizeSteppedValue(14, 5, 25, 10)).toBe(15);
   });
 });
