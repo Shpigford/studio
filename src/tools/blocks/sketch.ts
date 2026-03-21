@@ -74,7 +74,9 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
     const needsGeometryRedraw = dk !== cachedDrawKey
 
     if (needsGeometryRedraw) {
-      // Full geometry redraw
+      const c = ctx()
+
+      // Use p.background() to clear — it resets p5's internal transform state
       p.background(s.bgColor)
 
       // Recompute layout if cache key changed
@@ -94,55 +96,54 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
       const colorDensity = s.colorDensity / 100
       const wobble = s.edgeWobble / 100
 
-      // Apply rotation
-      p.push()
-      p.translate(p.width / 2, p.height / 2)
-      p.rotate(p.radians(s.rotation))
-      p.translate(-p.width / 2, -p.height / 2)
+      // Apply rotation via Canvas 2D
+      c.save()
+      c.translate(p.width / 2, p.height / 2)
+      c.rotate(s.rotation * Math.PI / 180)
+      c.translate(-p.width / 2, -p.height / 2)
 
       if (s.patternType === 'diagonal') {
         const drawRng = seededRandom(s.seed + 13)
         for (const poly of cachedPolys) {
           const blockColor = pickColor(colorRng, colorDensity, s.colors)
-          drawPaintedPolygon(p, poly.points, blockColor, wobble, drawRng)
+          drawPaintedPolygon(c, poly.points, blockColor, wobble, drawRng)
         }
         if (s.lineWeight > 0) {
           const outlineRng = seededRandom(s.seed + 19)
-          p.stroke(s.lineColor)
-          p.strokeWeight(s.lineWeight)
-          p.noFill()
+          c.strokeStyle = s.lineColor
+          c.lineWidth = s.lineWeight
           for (const poly of cachedPolys) {
-            p.beginShape()
-            for (const pt of poly.points) {
-              p.vertex(
-                pt.x + (outlineRng() - 0.5) * wobble * 4,
-                pt.y + (outlineRng() - 0.5) * wobble * 4,
-              )
+            c.beginPath()
+            for (let k = 0; k < poly.points.length; k++) {
+              const pt = poly.points[k]
+              const px = pt.x + (outlineRng() - 0.5) * wobble * 4
+              const py = pt.y + (outlineRng() - 0.5) * wobble * 4
+              if (k === 0) c.moveTo(px, py)
+              else c.lineTo(px, py)
             }
-            p.endShape(p.CLOSE)
+            c.closePath()
+            c.stroke()
           }
         }
       } else {
         const drawRng = seededRandom(s.seed + 13)
         for (const rect of cachedRects) {
           const blockColor = pickColor(colorRng, colorDensity, s.colors)
-          drawPaintedBlock(p, rect, blockColor, wobble, drawRng)
+          drawPaintedBlock(c, rect, blockColor, wobble, drawRng)
         }
         if (s.lineWeight > 0) {
           const outlineRng = seededRandom(s.seed + 19)
-          p.stroke(s.lineColor)
-          p.strokeWeight(s.lineWeight)
-          p.noFill()
+          c.strokeStyle = s.lineColor
+          c.lineWidth = s.lineWeight
           for (const rect of cachedRects) {
-            drawWobblyRectOutline(p, rect, wobble, outlineRng)
+            drawWobblyRectOutline(c, rect, wobble, outlineRng)
           }
         }
       }
 
-      p.pop()
+      c.restore()
 
       // Snapshot pre-effects state to offscreen canvas
-      const c = ctx()
       const d = p.pixelDensity()
       const pw = p.width * d
       const ph = p.height * d
@@ -332,123 +333,143 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
     return blocks
   }
 
-  // --- Drawing helpers ---
+  // --- Drawing helpers (Canvas 2D API for performance) ---
 
   function drawPaintedBlock(
-    p: p5,
+    c: CanvasRenderingContext2D,
     rect: RectBlock,
     blockColor: string,
     wobble: number,
     rng: () => number,
   ) {
-    p.noStroke()
-    p.fill(blockColor)
+    c.fillStyle = blockColor
 
     if (wobble <= 0) {
-      p.rect(rect.x, rect.y, rect.w, rect.h)
+      c.fillRect(rect.x, rect.y, rect.w, rect.h)
       return
     }
 
     const maxWobble = wobble * 4
+    const mw2 = maxWobble * 2
     const segments = 15
-    p.beginShape()
+    c.beginPath()
     // Top edge
-    for (let i = 0; i <= segments; i++) {
-      p.vertex(
+    c.moveTo(rect.x, rect.y + (rng() - 0.5) * mw2)
+    for (let i = 1; i <= segments; i++) {
+      c.lineTo(
         rect.x + (rect.w * i) / segments,
-        rect.y + (rng() - 0.5) * maxWobble * 2,
+        rect.y + (rng() - 0.5) * mw2,
       )
     }
     // Right edge
     for (let i = 1; i <= segments; i++) {
-      p.vertex(
-        rect.x + rect.w + (rng() - 0.5) * maxWobble * 2,
+      c.lineTo(
+        rect.x + rect.w + (rng() - 0.5) * mw2,
         rect.y + (rect.h * i) / segments,
       )
     }
     // Bottom edge
     for (let i = 1; i <= segments; i++) {
-      p.vertex(
+      c.lineTo(
         rect.x + rect.w - (rect.w * i) / segments,
-        rect.y + rect.h + (rng() - 0.5) * maxWobble * 2,
+        rect.y + rect.h + (rng() - 0.5) * mw2,
       )
     }
     // Left edge
     for (let i = 1; i < segments; i++) {
-      p.vertex(
-        rect.x + (rng() - 0.5) * maxWobble * 2,
+      c.lineTo(
+        rect.x + (rng() - 0.5) * mw2,
         rect.y + rect.h - (rect.h * i) / segments,
       )
     }
-    p.endShape(p.CLOSE)
+    c.closePath()
+    c.fill()
   }
 
   function drawPaintedPolygon(
-    p: p5,
+    c: CanvasRenderingContext2D,
     originalPoints: { x: number; y: number }[],
     blockColor: string,
     wobble: number,
     rng: () => number,
   ) {
-    p.noStroke()
-    p.fill(blockColor)
+    c.fillStyle = blockColor
 
     if (wobble <= 0) {
-      p.beginShape()
-      for (const pt of originalPoints) p.vertex(pt.x, pt.y)
-      p.endShape(p.CLOSE)
+      c.beginPath()
+      c.moveTo(originalPoints[0].x, originalPoints[0].y)
+      for (let k = 1; k < originalPoints.length; k++) {
+        c.lineTo(originalPoints[k].x, originalPoints[k].y)
+      }
+      c.closePath()
+      c.fill()
       return
     }
 
     const maxWobble = wobble * 4
+    const mw2 = maxWobble * 2
     const segments = 10
-    p.beginShape()
+    c.beginPath()
+    let first = true
     for (let i = 0; i < originalPoints.length; i++) {
       const p1 = originalPoints[i]
       const p2 = originalPoints[(i + 1) % originalPoints.length]
+      const dx = p2.x - p1.x
+      const dy = p2.y - p1.y
       for (let j = 0; j < segments; j++) {
         const t = j / segments
-        p.vertex(
-          p1.x + (p2.x - p1.x) * t + (rng() - 0.5) * maxWobble * 2,
-          p1.y + (p2.y - p1.y) * t + (rng() - 0.5) * maxWobble * 2,
-        )
+        const vx = p1.x + dx * t + (rng() - 0.5) * mw2
+        const vy = p1.y + dy * t + (rng() - 0.5) * mw2
+        if (first) { c.moveTo(vx, vy); first = false }
+        else c.lineTo(vx, vy)
       }
     }
-    p.endShape(p.CLOSE)
+    c.closePath()
+    c.fill()
   }
 
   function drawWobblyRectOutline(
-    p: p5,
+    c: CanvasRenderingContext2D,
     rect: RectBlock,
     wobble: number,
     rng: () => number,
   ) {
-    p.beginShape()
-    for (let i = 0; i <= 10; i++) {
-      p.vertex(
-        rect.x + (rect.w * i) / 10 + (rng() - 0.5) * wobble * 4,
-        rect.y + (rng() - 0.5) * wobble * 4,
+    const w4 = wobble * 4
+    c.beginPath()
+    // Top edge
+    c.moveTo(
+      rect.x + (rng() - 0.5) * w4,
+      rect.y + (rng() - 0.5) * w4,
+    )
+    for (let i = 1; i <= 10; i++) {
+      c.lineTo(
+        rect.x + (rect.w * i) / 10 + (rng() - 0.5) * w4,
+        rect.y + (rng() - 0.5) * w4,
       )
     }
+    // Right edge
     for (let i = 0; i <= 10; i++) {
-      p.vertex(
-        rect.x + rect.w + (rng() - 0.5) * wobble * 4,
-        rect.y + (rect.h * i) / 10 + (rng() - 0.5) * wobble * 4,
+      c.lineTo(
+        rect.x + rect.w + (rng() - 0.5) * w4,
+        rect.y + (rect.h * i) / 10 + (rng() - 0.5) * w4,
       )
     }
+    // Bottom edge
     for (let i = 0; i <= 10; i++) {
-      p.vertex(
-        rect.x + rect.w - (rect.w * i) / 10 + (rng() - 0.5) * wobble * 4,
-        rect.y + rect.h + (rng() - 0.5) * wobble * 4,
+      c.lineTo(
+        rect.x + rect.w - (rect.w * i) / 10 + (rng() - 0.5) * w4,
+        rect.y + rect.h + (rng() - 0.5) * w4,
       )
     }
+    // Right-to-left on bottom already handled, now left edge going up
     for (let i = 0; i <= 10; i++) {
-      p.vertex(
-        rect.x + (rng() - 0.5) * wobble * 4,
-        rect.y + rect.h - (rect.h * i) / 10 + (rng() - 0.5) * wobble * 4,
+      c.lineTo(
+        rect.x + (rng() - 0.5) * w4,
+        rect.y + rect.h - (rect.h * i) / 10 + (rng() - 0.5) * w4,
       )
     }
-    p.endShape(p.CLOSE)
+    c.closePath()
+    c.stroke()
   }
 
   // --- Post-processing effects ---
@@ -501,24 +522,34 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
         }
       }
 
+      const invD2 = 1 / (d * 2)
+      const hasGrain = grainStrength > 0
+      const grainScale = grainVariation * 2
+
       for (let y = 0; y < h; y++) {
+        const rowOffset = y * w * 4
+        const ny = (y * invD2) | 0
+        const noiseRowOffset = ny * nmW
         for (let x = 0; x < w; x++) {
-          const i = (y * w + x) * 4
+          const i = rowOffset + x * 4
           let variation = 0
 
           if (noiseMap) {
-            const nx = ((x / d) / 2) | 0
-            const ny = ((y / d) / 2) | 0
-            variation += noiseMap[ny * nmW + nx] * textureVariation
+            const nx = (x * invD2) | 0
+            variation += noiseMap[noiseRowOffset + nx] * textureVariation
           }
 
-          if (grainStrength > 0) {
-            variation += (Math.random() - 0.5) * 2 * grainVariation
+          if (hasGrain) {
+            variation += (Math.random() - 0.5) * grainScale
           }
 
-          data[i] = Math.min(255, Math.max(0, data[i] + variation))
-          data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + variation))
-          data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + variation))
+          // Ternary clamp avoids Math.min/Math.max function call overhead
+          let v = data[i] + variation
+          data[i] = v > 255 ? 255 : v < 0 ? 0 : v
+          v = data[i + 1] + variation
+          data[i + 1] = v > 255 ? 255 : v < 0 ? 0 : v
+          v = data[i + 2] + variation
+          data[i + 2] = v > 255 ? 255 : v < 0 ? 0 : v
         }
       }
     }
@@ -528,11 +559,16 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
       const originalData = new Uint8ClampedArray(data)
       const dotSpacing = s.halftoneSize * 2
       const maxDotSize = dotSpacing * 0.9
+      const maxDotSizeSq = maxDotSize * maxDotSize
       const halftoneAngle = s.halftoneAngle * (Math.PI / 180)
       const misalign = (s.halftoneMisalign / 100) * 4
-      const cyanOffset = { x: -misalign, y: misalign * 0.7 }
-      const magentaOffset = { x: misalign * 0.8, y: -misalign * 0.5 }
-      const yellowOffset = { x: misalign * 0.3, y: misalign }
+      // Pre-compute offsets × pixelDensity
+      const cyanOX = -misalign * d
+      const cyanOY = misalign * 0.7 * d
+      const magentaOX = misalign * 0.8 * d
+      const magentaOY = -misalign * 0.5 * d
+      const yellowOX = misalign * 0.3 * d
+      const yellowOY = misalign * d
 
       const paperR = 252
       const paperG = 250
@@ -543,51 +579,75 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
       const centerX = dotSpacing / 2
       const centerY = dotSpacing / 2
 
+      const blend = halftoneStrength * 0.7
+      const wMinus1 = w - 1
+      const hMinus1 = h - 1
+      const inv255 = 1 / 255
+
       for (let y = 0; y < h; y++) {
+        const rowOffset = y * w
+        const rotYsinA = y * sinA
+        const rotYcosA = y * cosA
         for (let x = 0; x < w; x++) {
-          const i = (y * w + x) * 4
-          const rotX = x * cosA - y * sinA
-          const rotY = x * sinA + y * cosA
+          const i = (rowOffset + x) * 4
+          const rotX = x * cosA - rotYsinA
+          const rotY = x * sinA + rotYcosA
           const gridX = ((rotX % dotSpacing) + dotSpacing) % dotSpacing
           const gridY = ((rotY % dotSpacing) + dotSpacing) % dotSpacing
-          const dist = Math.sqrt((gridX - centerX) ** 2 + (gridY - centerY) ** 2)
+          const dx = gridX - centerX
+          const dy = gridY - centerY
+          // Compare dist² instead of dist to avoid sqrt
+          const distSq = dx * dx + dy * dy
 
-          const getColorAt = (ox: number, oy: number) => {
-            const sx = Math.min(w - 1, Math.max(0, Math.floor(x + ox * d)))
-            const sy = Math.min(h - 1, Math.max(0, Math.floor(y + oy * d)))
-            const si = (sy * w + sx) * 4
-            return { r: originalData[si], g: originalData[si + 1], b: originalData[si + 2] }
-          }
+          // Inline color sampling — avoids closure + object allocation per call
+          let sx: number, sy: number, si: number
 
-          const cyanSample = getColorAt(cyanOffset.x, cyanOffset.y)
-          const magentaSample = getColorAt(magentaOffset.x, magentaOffset.y)
-          const yellowSample = getColorAt(yellowOffset.x, yellowOffset.y)
-          const blackSample = getColorAt(0, 0)
+          sx = x + cyanOX
+          sx = sx > wMinus1 ? wMinus1 : sx < 0 ? 0 : sx | 0
+          sy = y + cyanOY
+          sy = sy > hMinus1 ? hMinus1 : sy < 0 ? 0 : sy | 0
+          si = (sy * w + sx) * 4
+          const cyan = 255 - originalData[si]
 
-          const cyan = 255 - cyanSample.r
-          const magenta = 255 - magentaSample.g
-          const yellow = 255 - yellowSample.b
-          const black = Math.min(255 - blackSample.r, 255 - blackSample.g, 255 - blackSample.b)
+          sx = x + magentaOX
+          sx = sx > wMinus1 ? wMinus1 : sx < 0 ? 0 : sx | 0
+          sy = y + magentaOY
+          sy = sy > hMinus1 ? hMinus1 : sy < 0 ? 0 : sy | 0
+          si = (sy * w + sx) * 4
+          const magenta = 255 - originalData[si + 1]
 
-          const cyanDot = (cyan / 255) * maxDotSize
-          const magentaDot = (magenta / 255) * maxDotSize
-          const yellowDot = (yellow / 255) * maxDotSize
-          const blackDot = (black / 255) * maxDotSize * 0.7
+          sx = x + yellowOX
+          sx = sx > wMinus1 ? wMinus1 : sx < 0 ? 0 : sx | 0
+          sy = y + yellowOY
+          sy = sy > hMinus1 ? hMinus1 : sy < 0 ? 0 : sy | 0
+          si = (sy * w + sx) * 4
+          const yellow = 255 - originalData[si + 2]
+
+          si = (rowOffset + x) * 4
+          const bkR = 255 - originalData[si]
+          const bkG = 255 - originalData[si + 1]
+          const bkB = 255 - originalData[si + 2]
+          const black = bkR < bkG ? (bkR < bkB ? bkR : bkB) : (bkG < bkB ? bkG : bkB)
+
+          // Compare dot size² against dist² to avoid sqrt
+          const cyanDotSq = (cyan * inv255) * (cyan * inv255) * maxDotSizeSq
+          const magentaDotSq = (magenta * inv255) * (magenta * inv255) * maxDotSizeSq
+          const yellowDotSq = (yellow * inv255) * (yellow * inv255) * maxDotSizeSq
+          const blackDotSq = (black * inv255) * 0.7 * (black * inv255) * 0.7 * maxDotSizeSq
 
           let finalR = paperR
           let finalG = paperG
           let finalB = paperB
 
-          if (dist < cyanDot) { finalR -= 200; finalG -= 30; finalB -= 20 }
-          if (dist < magentaDot) { finalR -= 30; finalG -= 180; finalB -= 30 }
-          if (dist < yellowDot) { finalR -= 10; finalG -= 20; finalB -= 200 }
-          if (dist < blackDot) { finalR -= 60; finalG -= 60; finalB -= 60 }
+          if (distSq < cyanDotSq) { finalR -= 200; finalG -= 30; finalB -= 20 }
+          if (distSq < magentaDotSq) { finalR -= 30; finalG -= 180; finalB -= 30 }
+          if (distSq < yellowDotSq) { finalR -= 10; finalG -= 20; finalB -= 200 }
+          if (distSq < blackDotSq) { finalR -= 60; finalG -= 60; finalB -= 60 }
 
-          finalR = Math.min(255, Math.max(0, finalR))
-          finalG = Math.min(255, Math.max(0, finalG))
-          finalB = Math.min(255, Math.max(0, finalB))
+          finalR = finalR > 255 ? 255 : finalR < 0 ? 0 : finalR
+          finalG = finalG > 255 ? 255 : finalG < 0 ? 0 : finalG
+          finalB = finalB > 255 ? 255 : finalB < 0 ? 0 : finalB
 
-          const blend = halftoneStrength * 0.7
           data[i] = data[i] + (finalR - data[i]) * blend
           data[i + 1] = data[i + 1] + (finalG - data[i + 1]) * blend
           data[i + 2] = data[i + 2] + (finalB - data[i + 2]) * blend
