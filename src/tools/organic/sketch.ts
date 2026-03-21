@@ -2,6 +2,7 @@ import type p5 from 'p5'
 import type { RefObject } from 'react'
 import type { OrganicSettings, PathPoint, OrganicGeometry } from './types'
 import { hexToRgb } from '@/lib/color'
+import { resolveCanvasSize } from '@/lib/canvas-size'
 
 interface ParsedStop {
   r: number
@@ -9,9 +10,6 @@ interface ParsedStop {
   b: number
   position: number
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type P5Any = any
 
 export function createOrganicSketch(p: p5, settingsRef: RefObject<OrganicSettings>, geometryRef?: RefObject<OrganicGeometry | null>) {
   const ctx = () => p.drawingContext as CanvasRenderingContext2D
@@ -22,39 +20,16 @@ export function createOrganicSketch(p: p5, settingsRef: RefObject<OrganicSetting
 
   function pathKey(s: OrganicSettings): string {
     const algo = s[s.pathType]
-    return `${s.seed}|${s.pathType}|${s.pathCount}|${s.canvasSize}|${JSON.stringify(algo)}`
-  }
-
-  function getCanvasSize(): { w: number; h: number } {
-    const s = settingsRef.current
-    if (s.canvasSize === 1920) return { w: 1920, h: 1080 }
-    return { w: s.canvasSize, h: s.canvasSize }
-  }
-
-  function getContainerSize(): { w: number; h: number } {
-    const el = (p as P5Any).canvas?.parentElement ?? document.body
-    const maxW = el.clientWidth - 40
-    const maxH = el.clientHeight - 40
-    const target = getCanvasSize()
-
-    const scale = Math.min(1, maxW / target.w, maxH / target.h)
-    return { w: Math.floor(target.w * scale), h: Math.floor(target.h * scale) }
+    return `${s.seed}|${s.pathType}|${s.pathCount}|${s.canvasPreset}|${s.customWidth}|${s.customHeight}|${JSON.stringify(algo)}`
   }
 
   p.setup = () => {
-    const size = getContainerSize()
-    p.createCanvas(size.w, size.h)
-    p.pixelDensity(2)
+    const s = settingsRef.current
+    const [w, h] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    p.createCanvas(w, h)
+    p.pixelDensity(1)
     p.colorMode(p.RGB, 255)
     p.noLoop()
-    redrawCanvas()
-  }
-
-  p.windowResized = () => {
-    const size = getContainerSize()
-    p.resizeCanvas(size.w, size.h)
-    p.colorMode(p.RGB, 255)
-    cachedPathKey = ''
     redrawCanvas()
   }
 
@@ -65,9 +40,9 @@ export function createOrganicSketch(p: p5, settingsRef: RefObject<OrganicSetting
   function redrawCanvas() {
     const s = settingsRef.current
 
-    const target = getContainerSize()
-    if (p.width !== target.w || p.height !== target.h) {
-      p.resizeCanvas(target.w, target.h)
+    const [tw, th] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    if (p.width !== tw || p.height !== th) {
+      p.resizeCanvas(tw, th)
       p.colorMode(p.RGB, 255)
       cachedPathKey = ''
     }

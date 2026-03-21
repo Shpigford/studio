@@ -5,9 +5,9 @@ export type DitherSettings = {
   sourceType: "image" | "gradient"
   gradientType: "linear" | "radial" | "conic" | "noise"
   gradientAngle: number
-  aspectRatio: string
-  gradientWidth: number
-  gradientHeight: number
+  canvasPreset: import('@/lib/canvas-size').CanvasPreset
+  customWidth: number
+  customHeight: number
 
   // Pattern
   pattern:

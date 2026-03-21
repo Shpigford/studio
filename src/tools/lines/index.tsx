@@ -14,6 +14,9 @@ import { Button } from '@/components/ui/button'
 import { GradientEditor } from '@/components/controls/gradient-editor'
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
+import { CanvasSizeControl } from '@/components/controls/canvas-size-control'
+import type { CanvasPreset } from '@/lib/canvas-size'
+import { resolveCanvasSize } from '@/lib/canvas-size'
 import { createLinesSketch } from './sketch'
 import { DEFAULTS } from './types'
 import type { LinesSettings } from './types'
@@ -232,7 +235,8 @@ export default function Lines() {
     } else {
       const canvas = containerRef.current?.querySelector('canvas')
       if (!canvas) return
-      const recorder = createRecorder({ width: canvas.width, height: canvas.height, fps: 30, bitrate: 8_000_000 })
+      const [rw, rh] = resolveCanvasSize(settings.canvasPreset, settings.customWidth, settings.customHeight)
+      const recorder = createRecorder({ width: rw, height: rh, fps: 30, bitrate: 8_000_000 })
       if (!recorder) return
       recorder.start()
       recorderRef.current = recorder
@@ -254,6 +258,17 @@ export default function Lines() {
         </ButtonRow>
       }>
         <h2 className="mb-3 text-base font-medium text-text-primary">Lines</h2>
+
+        <Section title="Canvas">
+          <CanvasSizeControl
+            preset={settings.canvasPreset}
+            customWidth={settings.customWidth}
+            customHeight={settings.customHeight}
+            onPresetChange={(v) => update({ canvasPreset: v as CanvasPreset })}
+            onWidthChange={(v) => update({ customWidth: v })}
+            onHeightChange={(v) => update({ customHeight: v })}
+          />
+        </Section>
 
         <Section title="Shape" defaultOpen>
           <SelectControl

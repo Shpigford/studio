@@ -395,7 +395,7 @@ function isInGap(
 
 export function drawHorizontalLines(
   p: p5, ctx: CanvasRenderingContext2D, settings: LinesSettings,
-  props: LineProperties, canvasSize: number, animTime: number,
+  props: LineProperties, canvasWidth: number, canvasHeight: number, animTime: number,
   gradAnimOffset: number, parsedStops: HSBStop[],
 ) {
   const { frequency: freq, amplitude: amp, lineCount, spacing, padding,
@@ -408,7 +408,7 @@ export function drawHorizontalLines(
 
   const baseSpacing = 20
   const totalHeight = (lineCount - 1) * baseSpacing * spacing
-  const startY = (canvasSize - totalHeight) / 2
+  const startY = (canvasHeight - totalHeight) / 2
 
   for (let i = 0; i < lineCount; i++) {
     const spacingOffset = (props.spacingOffsets[i] ?? 0) * spacingVar
@@ -434,13 +434,13 @@ export function drawHorizontalLines(
     const hasRotation = rotation !== 0
     if (hasRotation) {
       ctx.save()
-      ctx.translate(canvasSize / 2, baseY)
+      ctx.translate(canvasWidth / 2, baseY)
       ctx.rotate(rotation)
-      ctx.translate(-canvasSize / 2, -baseY)
+      ctx.translate(-canvasWidth / 2, -baseY)
     }
 
     const lineStart = padding
-    const lineEnd = canvasSize - padding
+    const lineEnd = canvasWidth - padding
     const lineLength = lineEnd - lineStart
     const step = 2
 
@@ -451,7 +451,7 @@ export function drawHorizontalLines(
 
       if (isInGap(progress, i, settings, props)) {
         if (vertices.length > 1) {
-          drawSegment(p, ctx, vertices, settings, props, i, canvasSize, canvasSize, h, s, b, opacity, parsedStops, gradAnimOffset)
+          drawSegment(p, ctx, vertices, settings, props, i, canvasWidth, canvasHeight, h, s, b, opacity, parsedStops, gradAnimOffset)
         }
         vertices = []
         continue
@@ -482,7 +482,7 @@ export function drawHorizontalLines(
     }
 
     if (vertices.length > 1) {
-      drawSegment(p, ctx, vertices, settings, props, i, canvasSize, canvasSize, h, s, b, opacity, parsedStops, gradAnimOffset)
+      drawSegment(p, ctx, vertices, settings, props, i, canvasWidth, canvasHeight, h, s, b, opacity, parsedStops, gradAnimOffset)
     }
 
     if (hasRotation) ctx.restore()
@@ -491,7 +491,7 @@ export function drawHorizontalLines(
 
 export function drawVerticalLines(
   p: p5, ctx: CanvasRenderingContext2D, settings: LinesSettings,
-  props: LineProperties, canvasSize: number, animTime: number,
+  props: LineProperties, canvasWidth: number, canvasHeight: number, animTime: number,
   gradAnimOffset: number, parsedStops: HSBStop[],
 ) {
   const { frequency: freq, amplitude: amp, lineCount, spacing, padding, wobble,
@@ -504,7 +504,7 @@ export function drawVerticalLines(
 
   const baseSpacing = 20
   const totalWidth = (lineCount - 1) * baseSpacing * spacing
-  const startX = (canvasSize - totalWidth) / 2
+  const startX = (canvasWidth - totalWidth) / 2
 
   for (let i = 0; i < lineCount; i++) {
     const spacingOffset = (props.spacingOffsets[i] ?? 0) * spacingVar
@@ -530,13 +530,13 @@ export function drawVerticalLines(
     const hasRotation = rotation !== 0
     if (hasRotation) {
       ctx.save()
-      ctx.translate(baseX, canvasSize / 2)
+      ctx.translate(baseX, canvasHeight / 2)
       ctx.rotate(rotation)
-      ctx.translate(-baseX, -canvasSize / 2)
+      ctx.translate(-baseX, -canvasHeight / 2)
     }
 
     const lineStart = padding
-    const lineEnd = canvasSize - padding
+    const lineEnd = canvasHeight - padding
     const lineLength = lineEnd - lineStart
     const step = 2
     let vertices: Vertex[] = []
@@ -546,7 +546,7 @@ export function drawVerticalLines(
 
       if (isInGap(progress, i, settings, props)) {
         if (vertices.length > 1) {
-          drawSegment(p, ctx, vertices, settings, props, i, canvasSize, canvasSize, h, s, b, opacity, parsedStops, gradAnimOffset)
+          drawSegment(p, ctx, vertices, settings, props, i, canvasWidth, canvasHeight, h, s, b, opacity, parsedStops, gradAnimOffset)
         }
         vertices = []
         continue
@@ -577,7 +577,7 @@ export function drawVerticalLines(
     }
 
     if (vertices.length > 1) {
-      drawSegment(p, ctx, vertices, settings, props, i, canvasSize, canvasSize, h, s, b, opacity, parsedStops, gradAnimOffset)
+      drawSegment(p, ctx, vertices, settings, props, i, canvasWidth, canvasHeight, h, s, b, opacity, parsedStops, gradAnimOffset)
     }
 
     if (hasRotation) ctx.restore()
@@ -586,7 +586,7 @@ export function drawVerticalLines(
 
 export function drawCircles(
   p: p5, ctx: CanvasRenderingContext2D, settings: LinesSettings,
-  props: LineProperties, canvasSize: number, animTime: number,
+  props: LineProperties, canvasWidth: number, canvasHeight: number, animTime: number,
   gradAnimOffset: number, parsedStops: HSBStop[],
 ) {
   const { frequency: freq, amplitude: amp, lineCount, spacing, padding, wobble,
@@ -595,9 +595,10 @@ export function drawCircles(
   const perlinFlow = pfRaw / 100
   const opacityVar = ovRaw / 100
   const baseHSB = hexToHsb(settings.lineColor)
+  const canvasSize = Math.min(canvasWidth, canvasHeight)
 
-  const centerX = canvasSize / 2
-  const centerY = canvasSize / 2
+  const centerX = canvasWidth / 2
+  const centerY = canvasHeight / 2
   const maxRadius = canvasSize / 2 - padding
   const minRadius = padding
   const radiusStep = (maxRadius - minRadius) / Math.max(1, lineCount - 1)
@@ -634,14 +635,14 @@ export function drawCircles(
     }
 
     if (vertices.length > 1) {
-      drawSegment(p, ctx, vertices, settings, props, i, canvasSize, canvasSize, h, s, b, opacity, parsedStops, gradAnimOffset)
+      drawSegment(p, ctx, vertices, settings, props, i, canvasWidth, canvasHeight, h, s, b, opacity, parsedStops, gradAnimOffset)
     }
   }
 }
 
 export function drawDots(
   p: p5, ctx: CanvasRenderingContext2D, settings: LinesSettings,
-  props: LineProperties, canvasSize: number, animTime: number,
+  props: LineProperties, canvasWidth: number, canvasHeight: number, animTime: number,
   gradAnimOffset: number, parsedStops: HSBStop[],
 ) {
   const { frequency: freq, amplitude: amp, lineCount, spacing, padding, thickness,
@@ -655,7 +656,7 @@ export function drawDots(
 
   const baseSpacing = 20
   const totalHeight = (lineCount - 1) * baseSpacing * spacing
-  const startY = (canvasSize - totalHeight) / 2
+  const startY = (canvasHeight - totalHeight) / 2
   const dotSpacing = thickness * 8
 
   for (let i = 0; i < lineCount; i++) {
@@ -674,8 +675,8 @@ export function drawDots(
     const lineFreq = freq * (props.frequencies[i] ?? 1)
     const phase = props.phases[i] ?? 0
 
-    for (let x = padding; x <= canvasSize - padding; x += dotSpacing) {
-      const progress = (x - padding) / (canvasSize - 2 * padding)
+    for (let x = padding; x <= canvasWidth - padding; x += dotSpacing) {
+      const progress = (x - padding) / (canvasWidth - 2 * padding)
       const animPhase = phase + animTime
       const sineY = Math.sin(x * lineFreq + animPhase) * amp
       const perlinY = (getMultiOctaveNoise(p, x * 0.01, i * 0.5 + animTime * 0.1, noiseOctaves) - 0.5) * 2 * amp
@@ -688,7 +689,7 @@ export function drawDots(
       if (enableGradient && gradientType !== 'perLine') {
         const gc = gradientType === 'alongLine'
           ? getAlongLineColor(progress, gradAnimOffset, parsedStops, gradAnimMode)
-          : getSpatialColor(x, y, canvasSize, canvasSize, gradientType, gradAnimOffset, parsedStops, gradAnimMode)
+          : getSpatialColor(x, y, canvasWidth, canvasHeight, gradientType, gradAnimOffset, parsedStops, gradAnimMode)
         dotH = gc.h; dotS = gc.s; dotB = gc.b
       }
 
@@ -718,7 +719,7 @@ export function drawDots(
 
 export function drawSpiral(
   p: p5, ctx: CanvasRenderingContext2D, settings: LinesSettings,
-  props: LineProperties, canvasSize: number, animTime: number,
+  props: LineProperties, canvasWidth: number, canvasHeight: number, animTime: number,
   gradAnimOffset: number, parsedStops: HSBStop[],
 ) {
   const { frequency: freq, amplitude: amp, lineCount, spacing, padding, wobble,
@@ -727,9 +728,10 @@ export function drawSpiral(
   const perlinFlow = pfRaw / 100
   const opacityVar = ovRaw / 100
   const baseHSB = hexToHsb(settings.lineColor)
+  const canvasSize = Math.min(canvasWidth, canvasHeight)
 
-  const centerX = canvasSize / 2
-  const centerY = canvasSize / 2
+  const centerX = canvasWidth / 2
+  const centerY = canvasHeight / 2
   const maxRadius = canvasSize / 2 - padding
   const minRadius = padding * 0.5
   const arms = Math.max(1, lineCount)
@@ -758,7 +760,7 @@ export function drawSpiral(
       const progress = j / steps
       if (isInGap(progress, idx, settings, props)) {
         if (vertices.length > 1) {
-          drawSegment(p, ctx, vertices, settings, props, arm, canvasSize, canvasSize, h, s, b, opacity, parsedStops, gradAnimOffset)
+          drawSegment(p, ctx, vertices, settings, props, arm, canvasWidth, canvasHeight, h, s, b, opacity, parsedStops, gradAnimOffset)
         }
         vertices = []
         continue
@@ -776,14 +778,14 @@ export function drawSpiral(
     }
 
     if (vertices.length > 1) {
-      drawSegment(p, ctx, vertices, settings, props, arm, canvasSize, canvasSize, h, s, b, opacity, parsedStops, gradAnimOffset)
+      drawSegment(p, ctx, vertices, settings, props, arm, canvasWidth, canvasHeight, h, s, b, opacity, parsedStops, gradAnimOffset)
     }
   }
 }
 
 export function drawRadial(
   p: p5, ctx: CanvasRenderingContext2D, settings: LinesSettings,
-  props: LineProperties, canvasSize: number, animTime: number,
+  props: LineProperties, canvasWidth: number, canvasHeight: number, animTime: number,
   gradAnimOffset: number, parsedStops: HSBStop[],
 ) {
   const { frequency: freq, amplitude: amp, lineCount, padding, wobble,
@@ -792,9 +794,10 @@ export function drawRadial(
   const perlinFlow = pfRaw / 100
   const opacityVar = ovRaw / 100
   const baseHSB = hexToHsb(settings.lineColor)
+  const canvasSize = Math.min(canvasWidth, canvasHeight)
 
-  const centerX = canvasSize / 2
-  const centerY = canvasSize / 2
+  const centerX = canvasWidth / 2
+  const centerY = canvasHeight / 2
   const maxRadius = canvasSize / 2 - padding
   const minRadius = padding
   const rays = Math.max(1, lineCount)
@@ -822,7 +825,7 @@ export function drawRadial(
       const progress = j / steps
       if (isInGap(progress, idx, settings, props)) {
         if (vertices.length > 1) {
-          drawSegment(p, ctx, vertices, settings, props, i, canvasSize, canvasSize, h, s, b, opacity, parsedStops, gradAnimOffset)
+          drawSegment(p, ctx, vertices, settings, props, i, canvasWidth, canvasHeight, h, s, b, opacity, parsedStops, gradAnimOffset)
         }
         vertices = []
         continue
@@ -841,22 +844,23 @@ export function drawRadial(
     }
 
     if (vertices.length > 1) {
-      drawSegment(p, ctx, vertices, settings, props, i, canvasSize, canvasSize, h, s, b, opacity, parsedStops, gradAnimOffset)
+      drawSegment(p, ctx, vertices, settings, props, i, canvasWidth, canvasHeight, h, s, b, opacity, parsedStops, gradAnimOffset)
     }
   }
 }
 
 export function drawLissajous(
   p: p5, ctx: CanvasRenderingContext2D, settings: LinesSettings,
-  props: LineProperties, canvasSize: number, animTime: number,
+  props: LineProperties, canvasWidth: number, canvasHeight: number, animTime: number,
   gradAnimOffset: number, parsedStops: HSBStop[],
 ) {
   const { lissFreqA: freqA, lissFreqB: freqB, lissPhase: phase, lissScale: scale,
     lissResolution: resolution, oscillonMode, oscillonLayers: layers, oscillonSpread: spread } = settings
   const baseHSB = hexToHsb(settings.lineColor)
+  const canvasSize = Math.min(canvasWidth, canvasHeight)
 
-  const cx = canvasSize / 2
-  const cy = canvasSize / 2
+  const cx = canvasWidth / 2
+  const cy = canvasHeight / 2
   const scaleAmt = canvasSize * scale * 0.4
   const animPhase = animTime * 0.5
 
@@ -870,13 +874,13 @@ export function drawLissajous(
 
       drawSingleLissajous(p, ctx, settings, props, cx, cy, scaleAmt,
         layerFreqA, layerFreqB, layerPhase, resolution, baseHSB,
-        layerOpacity, layer, layers, canvasSize,
+        layerOpacity, layer, layers, canvasWidth, canvasHeight,
         parsedStops, gradAnimOffset)
     }
   } else {
     drawSingleLissajous(p, ctx, settings, props, cx, cy, scaleAmt,
       freqA, freqB, phase + animPhase, resolution, baseHSB,
-      1, 0, 1, canvasSize, parsedStops, gradAnimOffset)
+      1, 0, 1, canvasWidth, canvasHeight, parsedStops, gradAnimOffset)
   }
 }
 
@@ -887,7 +891,7 @@ function drawSingleLissajous(
   freqA: number, freqB: number, phase: number, resolution: number,
   baseHSB: { h: number; s: number; b: number },
   opacity: number, layerIndex: number, totalLayers: number,
-  canvasSize: number, parsedStops: HSBStop[], gradAnimOffset: number,
+  canvasWidth: number, canvasHeight: number, parsedStops: HSBStop[], gradAnimOffset: number,
 ) {
   const { colorDrift, enableGradient, gradientType, gradAnimMode, wobble } = settings
   void gradAnimMode
@@ -920,6 +924,6 @@ function drawSingleLissajous(
     if (colorDrift > 0) h = (h + (props.hueShifts[idx] ?? 0) * colorDrift + 360) % 360
   }
 
-  drawSegment(p, ctx, vertices, settings, props, layerIndex, canvasSize, canvasSize,
+  drawSegment(p, ctx, vertices, settings, props, layerIndex, canvasWidth, canvasHeight,
     h, s, b, opacity * 255, parsedStops, gradAnimOffset)
 }

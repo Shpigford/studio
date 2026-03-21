@@ -2,6 +2,7 @@ import type p5 from 'p5'
 import type { RefObject } from 'react'
 import type { TopoSettings, Point, ContourPath, TopoGeometry } from './types'
 import { hexToRgb } from '@/lib/color'
+import { resolveCanvasSize } from '@/lib/canvas-size'
 
 const GRID_SIZE = 200
 
@@ -21,9 +22,6 @@ interface Segment {
   level: number
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type P5Any = any
-
 export function createTopoSketch(
   p: p5,
   settingsRef: RefObject<TopoSettings>,
@@ -37,28 +35,16 @@ export function createTopoSketch(
   let cachedTerrainKey = ''
 
   function terrainKey(s: TopoSettings): string {
-    return `${s.seed}|${s.contourLevels}|${s.noiseScale}|${s.octaves}|${s.falloff}|${p.width}`
-  }
-
-  function getContainerSize(): number {
-    const el = (p as P5Any).canvas?.parentElement ?? document.body
-    return Math.min(el.clientWidth - 40, el.clientHeight - 40, 800)
+    return `${s.seed}|${s.contourLevels}|${s.noiseScale}|${s.octaves}|${s.falloff}|${s.canvasPreset}|${s.customWidth}|${s.customHeight}`
   }
 
   p.setup = () => {
-    const size = getContainerSize()
-    p.createCanvas(size, size)
-    p.pixelDensity(2)
+    const s = settingsRef.current
+    const [w, h] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    p.createCanvas(w, h)
+    p.pixelDensity(1)
     p.colorMode(p.RGB, 255)
     p.noLoop()
-    redrawCanvas()
-  }
-
-  p.windowResized = () => {
-    const size = getContainerSize()
-    p.resizeCanvas(size, size)
-    p.colorMode(p.RGB, 255)
-    cachedTerrainKey = '' // force recompute on resize
     redrawCanvas()
   }
 
@@ -68,6 +54,11 @@ export function createTopoSketch(
 
   function redrawCanvas() {
     const s = settingsRef.current
+    const [tw, th] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    if (p.width !== tw || p.height !== th) {
+      p.resizeCanvas(tw, th)
+      cachedTerrainKey = ''
+    }
     p.colorMode(p.RGB, 255)
     p.background(s.bgColor)
 

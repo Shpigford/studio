@@ -86,9 +86,9 @@ export const DEFAULTS: DitherSettings = {
   sourceType: "gradient",
   gradientType: "linear",
   gradientAngle: 45,
-  aspectRatio: "1:1",
-  gradientWidth: 512,
-  gradientHeight: 512,
+  canvasPreset: "square",
+  customWidth: 2048,
+  customHeight: 2048,
   pattern: "bayer4",
   ditherMode: "image",
   ditherStyle: "threshold",
@@ -113,10 +113,3 @@ export const PATTERN_OPTIONS = [
   { value: "scales", label: "Scales" },
 ]
 
-export const ASPECT_OPTIONS = [
-  { value: "1:1", label: "1:1" },
-  { value: "16:9", label: "16:9" },
-  { value: "4:3", label: "4:3" },
-  { value: "3:2", label: "3:2" },
-  { value: "custom", label: "Custom" },
-]

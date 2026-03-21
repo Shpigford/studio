@@ -13,7 +13,9 @@ export type BlocksSettings = {
   palette: string
   colors: string[]
   lineColor: string
-  canvasSize: 'square' | 'landscape' | 'portrait'
+  canvasPreset: import('@/lib/canvas-size').CanvasPreset
+  customWidth: number
+  customHeight: number
   asymmetry: number
   colorDensity: number
   gridDivisions: number

@@ -2,6 +2,7 @@ import type p5 from 'p5'
 import type { RefObject } from 'react'
 import type { BlocksSettings, RectBlock, PolyBlock, BlocksGeometry } from './types'
 import { seededRandom } from '@/lib/math'
+import { resolveCanvasSize } from '@/lib/canvas-size'
 
 export const PALETTES: Record<string, string[]> = {
   mondrian: ['#c92a2a', '#1862a8', '#f4d03f', '#ffffff', '#ffffff'],
@@ -9,12 +10,6 @@ export const PALETTES: Record<string, string[]> = {
   warm: ['#d64045', '#e8985e', '#f4d35e', '#fffffc', '#fffffc'],
   cool: ['#264653', '#2a9d8f', '#e9c46a', '#f4f1de', '#f4f1de'],
   monochrome: ['#212529', '#495057', '#adb5bd', '#f8f9fa', '#ffffff'],
-}
-
-export const CANVAS_SIZES: Record<string, [number, number]> = {
-  square: [800, 800],
-  landscape: [1024, 768],
-  portrait: [768, 1024],
 }
 
 export function pickColor(rng: () => number, colorDensity: number, colors: string[]): string {
@@ -41,7 +36,7 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
   let cachedNoiseMapDims = ''
 
   function layoutKey(s: BlocksSettings): string {
-    return `${s.seed}|${s.patternType}|${s.blockCount}|${s.complexity}|${s.asymmetry}|${s.gridDivisions}|${s.canvasSize}`
+    return `${s.seed}|${s.patternType}|${s.blockCount}|${s.complexity}|${s.asymmetry}|${s.gridDivisions}|${s.canvasPreset}|${s.customWidth}|${s.customHeight}`
   }
 
   // Everything that affects the drawn geometry (before effects)
@@ -51,7 +46,7 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
 
   p.setup = () => {
     const s = settingsRef.current
-    const [w, h] = CANVAS_SIZES[s.canvasSize] ?? [800, 800]
+    const [w, h] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
     p.createCanvas(w, h)
     p.pixelDensity(1)
     p.colorMode(p.RGB, 255)
@@ -67,7 +62,7 @@ export function createBlocksSketch(p: p5, settingsRef: RefObject<BlocksSettings>
     const s = settingsRef.current
 
     // Resize canvas if needed
-    const [tw, th] = CANVAS_SIZES[s.canvasSize] ?? [800, 800]
+    const [tw, th] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
     if (p.width !== tw || p.height !== th) {
       p.resizeCanvas(tw, th)
       p.colorMode(p.RGB, 255)

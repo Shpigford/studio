@@ -12,6 +12,9 @@ import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
 import { exportPNG, exportSVG, generateFilename } from "@/lib/export"
 import { getSourceImage, setSourceImage } from "@/lib/source-image"
+import { CanvasSizeControl } from "@/components/controls/canvas-size-control"
+import type { CanvasPreset } from "@/lib/canvas-size"
+import { resolveCanvasSize } from "@/lib/canvas-size"
 import type { DitherSettings } from "./types"
 import {
   generateGradientGrid,
@@ -21,7 +24,6 @@ import {
 } from "./engine"
 import { generateDitherSvg } from "./svg"
 import {
-  ASPECT_OPTIONS,
   DEFAULTS,
   PALETTE_PRESETS,
   PATTERN_OPTIONS,
@@ -30,16 +32,6 @@ import {
   createRandomPalette,
   createRandomSettingsPatch,
 } from "./randomize"
-
-function getGradientHeight(
-  width: number,
-  aspectRatio: string,
-  customHeight: number,
-): number {
-  if (aspectRatio === "custom") return customHeight
-  const [rw, rh] = aspectRatio.split(":").map(Number)
-  return Math.round((width * rh) / rw)
-}
 
 export default function Dither() {
   const [settings, update, reset] = useSettings<DitherSettings>("dither", DEFAULTS)
@@ -92,25 +84,21 @@ export default function Dither() {
 
   // Generate gradient grid and trigger re-render
   const generateGrid = useCallback(() => {
-    const h = getGradientHeight(
-      settings.gradientWidth,
-      settings.aspectRatio,
-      settings.gradientHeight,
-    )
+    const [gw, gh] = resolveCanvasSize(settings.canvasPreset, settings.customWidth, settings.customHeight)
     gridRef.current = generateGradientGrid(
       settings.gradientType,
-      settings.gradientWidth,
+      gw,
       settings.cellSize,
-      h,
+      gh,
       settings.gradientAngle,
     )
     sourceImageRef.current = null
     setGridVersion((v) => v + 1)
   }, [
     settings.gradientType,
-    settings.gradientWidth,
-    settings.gradientHeight,
-    settings.aspectRatio,
+    settings.canvasPreset,
+    settings.customWidth,
+    settings.customHeight,
     settings.gradientAngle,
     settings.cellSize,
   ])
@@ -129,9 +117,9 @@ export default function Dither() {
   }, [
     settings.sourceType,
     settings.gradientType,
-    settings.gradientWidth,
-    settings.gradientHeight,
-    settings.aspectRatio,
+    settings.canvasPreset,
+    settings.customWidth,
+    settings.customHeight,
     settings.gradientAngle,
     settings.cellSize,
     generateGrid,
@@ -251,6 +239,17 @@ export default function Dither() {
       >
         <h2 className="mb-3 text-base font-medium text-text-primary">Dither</h2>
         <div className="flex flex-col gap-4">
+          <Section title="Canvas">
+            <CanvasSizeControl
+              preset={settings.canvasPreset}
+              customWidth={settings.customWidth}
+              customHeight={settings.customHeight}
+              onPresetChange={(v) => update({ canvasPreset: v as CanvasPreset })}
+              onWidthChange={(v) => update({ customWidth: v })}
+              onHeightChange={(v) => update({ customHeight: v })}
+            />
+          </Section>
+
           <Section title="Source">
             <SelectControl
               label="Source"
@@ -313,32 +312,6 @@ export default function Dither() {
                       onChange={(v) => update({ gradientAngle: v })}
                     />
                   )}
-                <SelectControl
-                  label="Aspect Ratio"
-                  value={settings.aspectRatio}
-                  options={ASPECT_OPTIONS}
-                  onChange={(v) => update({ aspectRatio: v })}
-                />
-                <SliderControl
-                  label="Width"
-                  value={settings.gradientWidth}
-                  min={256}
-                  max={2048}
-                  step={64}
-                  unit="px"
-                  onChange={(v) => update({ gradientWidth: v })}
-                />
-                {settings.aspectRatio === "custom" && (
-                  <SliderControl
-                    label="Height"
-                    value={settings.gradientHeight}
-                    min={256}
-                    max={2048}
-                    step={64}
-                    unit="px"
-                    onChange={(v) => update({ gradientHeight: v })}
-                  />
-                )}
               </>
             )}
           </Section>

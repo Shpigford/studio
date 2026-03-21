@@ -1,6 +1,9 @@
 import type { ColorStop } from '@/types/tools'
 
 export type LinesSettings = {
+  canvasPreset: import('@/lib/canvas-size').CanvasPreset
+  customWidth: number
+  customHeight: number
   // Core
   shape: 'horizontal' | 'vertical' | 'circles' | 'dots' | 'spiral' | 'radial' | 'lissajous'
   frequency: number
@@ -96,6 +99,9 @@ export type LinesSettings = {
 }
 
 export const DEFAULTS: LinesSettings = {
+  canvasPreset: 'square',
+  customWidth: 2048,
+  customHeight: 2048,
   shape: 'horizontal',
   frequency: 0.02,
   amplitude: 30,

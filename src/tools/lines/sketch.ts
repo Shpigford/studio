@@ -1,6 +1,7 @@
 import type p5 from 'p5'
 import type { RefObject, MutableRefObject } from 'react'
 import type { LinesSettings } from './types'
+import { resolveCanvasSize } from '@/lib/canvas-size'
 import { VERT_SHADER, FRAG_SHADER } from './shaders'
 import { generateLineProperties, type LineProperties } from './line-properties'
 import {
@@ -12,8 +13,6 @@ import {
 interface Recorder {
   addFrame: (canvas: HTMLCanvasElement) => void
 }
-
-const CANVAS_SIZE = 1024
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type P5Any = any
@@ -56,16 +55,8 @@ export function createLinesSketch(
   let cachedStopsKey = ''
   let parsedStops: ReturnType<typeof parseGradientStops> = []
 
-  // Container sizing
-  let cachedSize = { w: CANVAS_SIZE, h: CANVAS_SIZE }
-
-  function recomputeContainerSize() {
-    const el = (p as P5Any).canvas?.parentElement ?? document.body
-    const maxW = el.clientWidth - 40
-    const maxH = el.clientHeight - 40
-    const scale = Math.min(1, maxW / CANVAS_SIZE, maxH / CANVAS_SIZE)
-    cachedSize = { w: Math.floor(CANVAS_SIZE * scale), h: Math.floor(CANVAS_SIZE * scale) }
-  }
+  let cachedCanvasW = 0
+  let cachedCanvasH = 0
 
   function getLineProps(s: LinesSettings): LineProperties {
     const key = `${s.lineCount}|${s.morseDensity}|${s.dotRatio}`
@@ -95,7 +86,7 @@ export function createLinesSketch(
     if (webglFailed) return
     if (!effectsGraphics) {
       try {
-        effectsGraphics = p.createGraphics(CANVAS_SIZE, CANVAS_SIZE, p.WEBGL)
+        effectsGraphics = p.createGraphics(cachedCanvasW, cachedCanvasH, p.WEBGL)
         postShader = effectsGraphics.createShader(VERT_SHADER, FRAG_SHADER)
       } catch {
         webglFailed = true
@@ -109,10 +100,10 @@ export function createLinesSketch(
     // Use a canvas directly instead of p5.Graphics + p.noise() which is extremely slow
     // (1M pixels × 2 p.noise calls = ~3 second stall). Fast PRNG + typed array instead.
     const canvas = document.createElement('canvas')
-    canvas.width = CANVAS_SIZE
-    canvas.height = CANVAS_SIZE
+    canvas.width = cachedCanvasW
+    canvas.height = cachedCanvasH
     const ctx2 = canvas.getContext('2d')!
-    const imageData = ctx2.createImageData(CANVAS_SIZE, CANVAS_SIZE)
+    const imageData = ctx2.createImageData(cachedCanvasW, cachedCanvasH)
     const data = imageData.data
 
     // Simple seeded PRNG (xorshift32) — fast, no p5 dependency
@@ -146,7 +137,7 @@ export function createLinesSketch(
     ctx2.putImageData(imageData, 0, 0)
 
     // Wrap in p5.Graphics-compatible image for p.image() / p.tint()
-    noiseBuffer = p.createGraphics(CANVAS_SIZE, CANVAS_SIZE)
+    noiseBuffer = p.createGraphics(cachedCanvasW, cachedCanvasH)
     ;(noiseBuffer.drawingContext as CanvasRenderingContext2D).drawImage(canvas, 0, 0)
     noiseGenerated = true
   }
@@ -162,7 +153,7 @@ export function createLinesSketch(
     effectsGraphics.shader(postShader)
 
     postShader.setUniform('tex0', currentFrame)
-    postShader.setUniform('resolution', [CANVAS_SIZE, CANVAS_SIZE])
+    postShader.setUniform('resolution', [cachedCanvasW, cachedCanvasH])
     postShader.setUniform('blurAmount', s.blur)
     postShader.setUniform('chromaticAb', s.chromaticAb ? s.chromaticAbAmount : 0.0)
 
@@ -204,23 +195,21 @@ export function createLinesSketch(
     }
 
     // Fullscreen quad
-    effectsGraphics.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+    effectsGraphics.rect(0, 0, cachedCanvasW, cachedCanvasH)
 
     // Draw result back to main canvas
-    p.image(effectsGraphics, 0, 0, CANVAS_SIZE, CANVAS_SIZE)
+    p.image(effectsGraphics, 0, 0, cachedCanvasW, cachedCanvasH)
   }
 
   p.setup = () => {
-    recomputeContainerSize()
-    p.createCanvas(cachedSize.w, cachedSize.h)
+    const s = settingsRef.current
+    const [w, h] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    cachedCanvasW = w
+    cachedCanvasH = h
+    p.createCanvas(w, h)
     p.pixelDensity(1)
     p.noLoop()
     p.redraw()
-  }
-
-  p.windowResized = () => {
-    recomputeContainerSize()
-    p.resizeCanvas(cachedSize.w, cachedSize.h)
   }
 
   p.draw = () => {
@@ -242,16 +231,19 @@ export function createLinesSketch(
       }
     }
 
-    // Resize display canvas if needed
-    if (p.width !== cachedSize.w || p.height !== cachedSize.h) {
-      p.resizeCanvas(cachedSize.w, cachedSize.h)
+    // Resize canvas if preset changed
+    const [tw, th] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    if (p.width !== tw || p.height !== th) {
+      cachedCanvasW = tw
+      cachedCanvasH = th
+      p.resizeCanvas(tw, th)
+      // Recreate effects buffers at new size
+      if (effectsGraphics) { effectsGraphics.remove(); effectsGraphics = null; postShader = null }
+      if (noiseBuffer) { noiseBuffer.remove(); noiseBuffer = null; noiseGenerated = false }
     }
 
-    // We draw at CANVAS_SIZE internally using a p5.Graphics, then scale to display
-    // Actually, let's draw to the main canvas at display size, but use
-    // a scaling approach. For simplicity, draw at the display canvas size
-    // and let the shader effects use display size.
-    const canvasSize = Math.min(p.width, p.height)
+    const canvasWidth = p.width
+    const canvasHeight = p.height
     const ctx = (p.drawingContext as CanvasRenderingContext2D)
 
     // Background
@@ -292,31 +284,30 @@ export function createLinesSketch(
     ctx.lineCap = 'round'
 
     // Draw shape
-    const sz = canvasSize
     switch (s.shape) {
       case 'horizontal':
-        drawHorizontalLines(p, ctx, s, props, sz, animationTime, gradAnimOffset, stops)
+        drawHorizontalLines(p, ctx, s, props, canvasWidth, canvasHeight, animationTime, gradAnimOffset, stops)
         break
       case 'vertical':
-        drawVerticalLines(p, ctx, s, props, sz, animationTime, gradAnimOffset, stops)
+        drawVerticalLines(p, ctx, s, props, canvasWidth, canvasHeight, animationTime, gradAnimOffset, stops)
         break
       case 'circles':
-        drawCircles(p, ctx, s, props, sz, animationTime, gradAnimOffset, stops)
+        drawCircles(p, ctx, s, props, canvasWidth, canvasHeight, animationTime, gradAnimOffset, stops)
         break
       case 'dots':
-        drawDots(p, ctx, s, props, sz, animationTime, gradAnimOffset, stops)
+        drawDots(p, ctx, s, props, canvasWidth, canvasHeight, animationTime, gradAnimOffset, stops)
         break
       case 'spiral':
-        drawSpiral(p, ctx, s, props, sz, animationTime, gradAnimOffset, stops)
+        drawSpiral(p, ctx, s, props, canvasWidth, canvasHeight, animationTime, gradAnimOffset, stops)
         break
       case 'radial':
-        drawRadial(p, ctx, s, props, sz, animationTime, gradAnimOffset, stops)
+        drawRadial(p, ctx, s, props, canvasWidth, canvasHeight, animationTime, gradAnimOffset, stops)
         break
       case 'lissajous':
-        drawLissajous(p, ctx, s, props, sz, animationTime, gradAnimOffset, stops)
+        drawLissajous(p, ctx, s, props, canvasWidth, canvasHeight, animationTime, gradAnimOffset, stops)
         break
       default:
-        drawHorizontalLines(p, ctx, s, props, sz, animationTime, gradAnimOffset, stops)
+        drawHorizontalLines(p, ctx, s, props, canvasWidth, canvasHeight, animationTime, gradAnimOffset, stops)
     }
 
     // Reset blend mode

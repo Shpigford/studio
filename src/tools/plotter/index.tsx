@@ -15,6 +15,8 @@ import { ButtonRow } from '@/components/controls/button-row'
 import { Button } from '@/components/ui/button'
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
+import { CanvasSizeControl } from '@/components/controls/canvas-size-control'
+import type { CanvasPreset } from '@/lib/canvas-size'
 import { createPlotterSketch, PALETTES } from './sketch'
 import { generatePlotterSvg } from './svg'
 import type { PlotterSettings, PlotterGeometry } from './types'
@@ -22,7 +24,9 @@ import type { PlotterSettings, PlotterGeometry } from './types'
 const BG_COLORS = ['#f5f5dc', '#faf0e6', '#fff8e7', '#f0f0f0', '#1a1a1a', '#0d0d0d', '#f5f5f5', '#e8e4d9']
 
 const DEFAULTS: PlotterSettings = {
-  canvasSize: 800,
+  canvasPreset: 'square',
+  customWidth: 2048,
+  customHeight: 2048,
   bgColor: '#f5f5dc',
   margin: 40,
   seed: 12345,
@@ -237,16 +241,13 @@ export default function Plotter() {
         <h2 className="mb-3 text-base font-medium text-text-primary">Plotter</h2>
 
         <Section title="Canvas">
-          <SelectControl
-            label="Size"
-            value={String(settings.canvasSize)}
-            options={[
-              { value: '600', label: '600 × 600' },
-              { value: '800', label: '800 × 800' },
-              { value: '1000', label: '1000 × 1000' },
-              { value: '1200', label: '1200 × 1200' },
-            ]}
-            onChange={(v) => update({ canvasSize: Number(v) })}
+          <CanvasSizeControl
+            preset={settings.canvasPreset}
+            customWidth={settings.customWidth}
+            customHeight={settings.customHeight}
+            onPresetChange={(v) => update({ canvasPreset: v as CanvasPreset })}
+            onWidthChange={(v) => update({ customWidth: v })}
+            onHeightChange={(v) => update({ customHeight: v })}
           />
           <ColorControl label="Background" value={settings.bgColor} onChange={(v) => update({ bgColor: v })} />
           <SliderControl label="Margin" value={settings.margin} min={0} max={100} step={5} onChange={(v) => update({ margin: v })} />

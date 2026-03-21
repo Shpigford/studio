@@ -28,7 +28,9 @@ export type WaveSettings = {
 }
 
 export type OrganicSettings = {
-  canvasSize: number
+  canvasPreset: import('@/lib/canvas-size').CanvasPreset
+  customWidth: number
+  customHeight: number
   bgColor: string
   pathType: 'flowField' | 'wandering' | 'waves'
   pathCount: number

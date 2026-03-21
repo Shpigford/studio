@@ -23,7 +23,7 @@ export function SelectControl({
     <div className="flex items-center justify-between">
       <span className="text-xs text-text-secondary">{label}</span>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-[120px]">
+        <SelectTrigger className="w-[150px]">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

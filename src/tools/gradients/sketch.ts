@@ -2,12 +2,11 @@ import type p5 from 'p5'
 import type { RefObject, MutableRefObject } from 'react'
 import type { GradientsSettings } from './types'
 import { hexToRgb } from '@/lib/color'
+import { resolveCanvasSize } from '@/lib/canvas-size'
 
 interface Recorder {
   addFrame: (canvas: HTMLCanvasElement) => void
 }
-
-const CANVAS_SIZE = 1024
 
 const vertShader = `
 attribute vec3 aPosition;
@@ -252,17 +251,8 @@ export function createGradientsSketch(
   let gradientShader: p5.Shader
   let animationTime = 0
   let wasAnimating = false
-
-  // Cached container size — only recomputed on resize
-  let cachedSize = { w: CANVAS_SIZE, h: CANVAS_SIZE }
-
-  function recomputeContainerSize() {
-    const el = (p as P5Any).canvas?.parentElement ?? document.body
-    const maxW = el.clientWidth - 40
-    const maxH = el.clientHeight - 40
-    const scale = Math.min(1, maxW / CANVAS_SIZE, maxH / CANVAS_SIZE)
-    cachedSize = { w: Math.floor(CANVAS_SIZE * scale), h: Math.floor(CANVAS_SIZE * scale) }
-  }
+  let cachedCanvasW = 0
+  let cachedCanvasH = 0
 
   // Cached parsed color stops — only recomputed when colorStops change
   let cachedStopsKey = ''
@@ -291,7 +281,7 @@ export function createGradientsSketch(
   function setShaderUniforms(shader: p5.Shader) {
     const s = settingsRef.current
 
-    shader.setUniform('resolution', [CANVAS_SIZE, CANVAS_SIZE])
+    shader.setUniform('resolution', [cachedCanvasW, cachedCanvasH])
     shader.setUniform('time', animationTime)
 
     recomputeColorStops(s.colorStops)
@@ -325,20 +315,18 @@ export function createGradientsSketch(
   }
 
   p.setup = () => {
-    recomputeContainerSize()
-    p.createCanvas(cachedSize.w, cachedSize.h)
+    const s = settingsRef.current
+    const [w, h] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    cachedCanvasW = w
+    cachedCanvasH = h
+    p.createCanvas(w, h)
     p.pixelDensity(1)
 
-    shaderGraphics = p.createGraphics(CANVAS_SIZE, CANVAS_SIZE, p.WEBGL)
+    shaderGraphics = p.createGraphics(w, h, p.WEBGL)
     gradientShader = shaderGraphics.createShader(vertShader, fragShader)
 
     p.noLoop()
     p.redraw()
-  }
-
-  p.windowResized = () => {
-    recomputeContainerSize()
-    p.resizeCanvas(cachedSize.w, cachedSize.h)
   }
 
   p.draw = () => {
@@ -356,15 +344,21 @@ export function createGradientsSketch(
       animationTime += p.deltaTime * 0.001 * (s.animationSpeed / 50)
     }
 
-    // Resize display canvas if needed
-    if (p.width !== cachedSize.w || p.height !== cachedSize.h) {
-      p.resizeCanvas(cachedSize.w, cachedSize.h)
+    // Resize canvas if preset changed
+    const [tw, th] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    if (p.width !== tw || p.height !== th) {
+      cachedCanvasW = tw
+      cachedCanvasH = th
+      p.resizeCanvas(tw, th)
+      shaderGraphics.remove()
+      shaderGraphics = p.createGraphics(tw, th, p.WEBGL)
+      gradientShader = shaderGraphics.createShader(vertShader, fragShader)
     }
 
     // Render shader to offscreen graphics
     shaderGraphics.shader(gradientShader)
     setShaderUniforms(gradientShader)
-    shaderGraphics.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+    shaderGraphics.rect(0, 0, tw, th)
 
     // Draw to main canvas
     p.image(shaderGraphics, 0, 0, p.width, p.height)

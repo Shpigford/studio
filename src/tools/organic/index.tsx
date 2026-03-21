@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button'
 import { GradientEditor } from '@/components/controls/gradient-editor'
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
+import { CanvasSizeControl } from '@/components/controls/canvas-size-control'
+import type { CanvasPreset } from '@/lib/canvas-size'
 import { createOrganicSketch } from './sketch'
 import { generateOrganicSvg } from './svg'
 import type { OrganicSettings, OrganicGeometry } from './types'
@@ -41,7 +43,9 @@ function paletteToStops(colors: string[]): ColorStop[] {
 }
 
 const DEFAULTS: OrganicSettings = {
-  canvasSize: 800,
+  canvasPreset: 'square',
+  customWidth: 2048,
+  customHeight: 2048,
   bgColor: '#ffffff',
   pathType: 'wandering',
   pathCount: 20,
@@ -187,14 +191,13 @@ export default function Organic() {
         <h2 className="mb-3 text-base font-medium text-text-primary">Organic</h2>
 
         <Section title="Canvas">
-          <SelectControl
-            label="Size"
-            value={String(settings.canvasSize)}
-            options={[
-              { value: '800', label: 'Square (800×800)' },
-              { value: '1920', label: 'Wide (1920×1080)' },
-            ]}
-            onChange={(v) => update({ canvasSize: parseInt(v) })}
+          <CanvasSizeControl
+            preset={settings.canvasPreset}
+            customWidth={settings.customWidth}
+            customHeight={settings.customHeight}
+            onPresetChange={(v) => update({ canvasPreset: v as CanvasPreset })}
+            onWidthChange={(v) => update({ customWidth: v })}
+            onHeightChange={(v) => update({ customHeight: v })}
           />
           <ColorControl
             label="Background"

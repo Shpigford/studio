@@ -1,6 +1,9 @@
 import type { ColorStop } from '@/types/tools'
 
 export type GradientsSettings = {
+  canvasPreset: import('@/lib/canvas-size').CanvasPreset
+  customWidth: number
+  customHeight: number
   colorStops: ColorStop[]
   flowAngle: number
   noiseScale: number

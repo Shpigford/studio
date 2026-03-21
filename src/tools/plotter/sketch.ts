@@ -7,6 +7,7 @@ import type {
   PlotterSettings,
   PlotterShapePrimitive,
 } from './types'
+import { resolveCanvasSize } from '@/lib/canvas-size'
 
 interface Point {
   x: number
@@ -17,9 +18,6 @@ type ExportStyle = {
   color: string
   filled: boolean
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type P5Any = any
 
 export const PALETTES: Record<string, string[]> = {
   purplePink: ['#1a1a3e', '#d4a5c9', '#8b6b8a'],
@@ -104,29 +102,13 @@ export function createPlotterSketch(
     })
   }
 
-  function getContainerSize(): { w: number; h: number } {
-    const el = (p as P5Any).canvas?.parentElement ?? document.body
-    const maxW = el.clientWidth - 40
-    const maxH = el.clientHeight - 40
-    const size = settingsRef.current.canvasSize
-    const scale = Math.min(1, maxW / size, maxH / size)
-    return { w: Math.floor(size * scale), h: Math.floor(size * scale) }
-  }
-
   p.setup = () => {
-    const size = getContainerSize()
-    p.createCanvas(size.w, size.h)
-    p.pixelDensity(2)
+    const s = settingsRef.current
+    const [w, h] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    p.createCanvas(w, h)
+    p.pixelDensity(1)
     p.colorMode(p.RGB, 255)
     p.noLoop()
-    redrawCanvas()
-  }
-
-  p.windowResized = () => {
-    const size = getContainerSize()
-    p.resizeCanvas(size.w, size.h)
-    p.colorMode(p.RGB, 255)
-    // force recompute on resize
     redrawCanvas()
   }
 
@@ -138,11 +120,10 @@ export function createPlotterSketch(
     const s = settingsRef.current
     svgElements = []
 
-    const target = getContainerSize()
-    if (p.width !== target.w || p.height !== target.h) {
-      p.resizeCanvas(target.w, target.h)
+    const [tw, th] = resolveCanvasSize(s.canvasPreset, s.customWidth, s.customHeight)
+    if (p.width !== tw || p.height !== th) {
+      p.resizeCanvas(tw, th)
       p.colorMode(p.RGB, 255)
-      // force recompute on resize
     }
 
     p.randomSeed(s.seed)

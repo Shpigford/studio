@@ -19,4 +19,7 @@ export type TopoSettings = {
   opacity: number
   grain: number
   margin: number
+  canvasPreset: import('@/lib/canvas-size').CanvasPreset
+  customWidth: number
+  customHeight: number
 };

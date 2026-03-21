@@ -14,6 +14,8 @@ import { ButtonRow } from '@/components/controls/button-row'
 import { Button } from '@/components/ui/button'
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
+import { CanvasSizeControl } from '@/components/controls/canvas-size-control'
+import type { CanvasPreset } from '@/lib/canvas-size'
 import { createBlocksSketch, PALETTES } from './sketch'
 import { generateBlocksSvg } from './svg'
 import type { BlocksSettings, BlocksGeometry } from './types'
@@ -29,7 +31,9 @@ const DEFAULTS: BlocksSettings = {
   palette: 'mondrian',
   colors: ['#c92a2a', '#1862a8', '#f4d03f', '#ffffff', '#ffffff'],
   lineColor: '#000000',
-  canvasSize: 'square',
+  canvasPreset: 'square',
+  customWidth: 2048,
+  customHeight: 2048,
   asymmetry: 50,
   colorDensity: 40,
   gridDivisions: 4,
@@ -132,6 +136,17 @@ export default function Blocks() {
       }>
         <h2 className="mb-3 text-base font-medium text-text-primary">Blocks</h2>
 
+        <Section title="Canvas">
+          <CanvasSizeControl
+            preset={settings.canvasPreset}
+            customWidth={settings.customWidth}
+            customHeight={settings.customHeight}
+            onPresetChange={(v) => update({ canvasPreset: v as CanvasPreset })}
+            onWidthChange={(v) => update({ customWidth: v })}
+            onHeightChange={(v) => update({ customHeight: v })}
+          />
+        </Section>
+
         <Section title="Pattern">
           <SliderControl
             label="Seed"
@@ -193,16 +208,6 @@ export default function Blocks() {
         </Section>
 
         <Section title="Layout">
-          <SelectControl
-            label="Canvas Size"
-            value={settings.canvasSize}
-            options={[
-              { value: 'square', label: 'Square (800×800)' },
-              { value: 'landscape', label: 'Landscape (1024×768)' },
-              { value: 'portrait', label: 'Portrait (768×1024)' },
-            ]}
-            onChange={(v) => update({ canvasSize: v as BlocksSettings['canvasSize'] })}
-          />
           <SliderControl
             label="Rotation"
             value={settings.rotation}

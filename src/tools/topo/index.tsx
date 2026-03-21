@@ -14,6 +14,8 @@ import { ButtonRow } from '@/components/controls/button-row'
 import { Button } from '@/components/ui/button'
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
+import { CanvasSizeControl } from '@/components/controls/canvas-size-control'
+import type { CanvasPreset } from '@/lib/canvas-size'
 import { createTopoSketch } from './sketch'
 import { generateTopoSvg } from './svg'
 import type { TopoSettings, TopoGeometry } from './types'
@@ -35,6 +37,9 @@ const DEFAULTS: TopoSettings = {
   opacity: 100,
   grain: 0,
   margin: 20,
+  canvasPreset: 'square',
+  customWidth: 2048,
+  customHeight: 2048,
 }
 
 function hslToHex(h: number, s: number, l: number): string {
@@ -151,6 +156,17 @@ export default function Topo() {
         </ButtonRow>
       }>
         <h2 className="mb-3 text-base font-medium text-text-primary">Topo</h2>
+
+        <Section title="Canvas">
+          <CanvasSizeControl
+            preset={settings.canvasPreset}
+            customWidth={settings.customWidth}
+            customHeight={settings.customHeight}
+            onPresetChange={(v) => update({ canvasPreset: v as CanvasPreset })}
+            onWidthChange={(v) => update({ customWidth: v })}
+            onHeightChange={(v) => update({ customHeight: v })}
+          />
+        </Section>
 
         <Section title="Terrain">
           <SliderControl

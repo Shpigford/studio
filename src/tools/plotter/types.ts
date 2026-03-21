@@ -99,7 +99,9 @@ export type GeometricSettings = {
 }
 
 export type PlotterSettings = {
-  canvasSize: number
+  canvasPreset: import('@/lib/canvas-size').CanvasPreset
+  customWidth: number
+  customHeight: number
   bgColor: string
   margin: number
   seed: number

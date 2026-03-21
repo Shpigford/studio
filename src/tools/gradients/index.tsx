@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/button'
 import { GradientEditor } from '@/components/controls/gradient-editor'
 import { useShortcutActions } from '@/hooks/use-shortcut-actions'
 import { Kbd } from '@/components/ui/kbd'
+import { CanvasSizeControl } from '@/components/controls/canvas-size-control'
+import type { CanvasPreset } from '@/lib/canvas-size'
+import { resolveCanvasSize } from '@/lib/canvas-size'
 import { createGradientsSketch } from './sketch'
 import type { GradientsSettings } from './types'
 import type { ColorStop } from '@/types/tools'
@@ -38,6 +41,9 @@ const PALETTES: string[][] = [
 ]
 
 const DEFAULTS: GradientsSettings = {
+  canvasPreset: 'square',
+  customWidth: 2048,
+  customHeight: 2048,
   colorStops: [
     { color: '#FF6B35', position: 0 },
     { color: '#F7C59F', position: 25 },
@@ -157,7 +163,8 @@ export default function Gradients() {
       }
     } else {
       // Start recording
-      const recorder = createRecorder({ width: 1024, height: 1024, fps: 30, bitrate: 8_000_000 })
+      const [rw, rh] = resolveCanvasSize(settings.canvasPreset, settings.customWidth, settings.customHeight)
+      const recorder = createRecorder({ width: rw, height: rh, fps: 30, bitrate: 8_000_000 })
       if (!recorder) return
       recorder.start()
       recorderRef.current = recorder
@@ -183,6 +190,17 @@ export default function Gradients() {
         </ButtonRow>
       }>
         <h2 className="mb-3 text-base font-medium text-text-primary">Gradients</h2>
+
+        <Section title="Canvas">
+          <CanvasSizeControl
+            preset={settings.canvasPreset}
+            customWidth={settings.customWidth}
+            customHeight={settings.customHeight}
+            onPresetChange={(v) => update({ canvasPreset: v as CanvasPreset })}
+            onWidthChange={(v) => update({ customWidth: v })}
+            onHeightChange={(v) => update({ customHeight: v })}
+          />
+        </Section>
 
         <Section title="Colors">
           <GradientEditor
