@@ -44,7 +44,7 @@ export function PaletteEditor({
         <div className="flex flex-wrap gap-1">
           {onRandomize && (
             <Button variant="secondary" size="sm" onClick={onRandomize}>
-              <Shuffle className="mr-1 h-3 w-3" />
+              <Shuffle className="mr-1 size-4 shrink-0" />
               Random
             </Button>
           )}

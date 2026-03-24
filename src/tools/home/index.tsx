@@ -121,7 +121,7 @@ export default function Home() {
               <div className="transition-transform duration-150 group-hover:scale-110">
                 <ToolIcon tool={tool.id} className="h-10 w-10 lg:h-14 lg:w-14" />
               </div>
-              <span className="text-[10px] text-text-muted transition-colors duration-150 group-hover:text-text-secondary lg:text-xs">
+              <span className="text-[10px] text-text-muted group-hover:text-text-secondary lg:text-xs">
                 {tool.name}
               </span>
             </button>

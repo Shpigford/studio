@@ -18,6 +18,8 @@ export function ColorControl({ label, value, onChange }: ColorControlProps) {
       <Popover>
         <PopoverTrigger asChild>
           <button
+            type="button"
+            aria-label={`Pick ${label} color`}
             className="h-7 w-7 shrink-0 cursor-pointer rounded-md border border-border-control"
             style={{ backgroundColor: value }}
           />
@@ -26,6 +28,7 @@ export function ColorControl({ label, value, onChange }: ColorControlProps) {
           <HexColorPicker color={value} onChange={onChange} />
           <input
             type="text"
+            aria-label={`${label} hex color`}
             value={value}
             onChange={(e) => {
               const v = e.target.value

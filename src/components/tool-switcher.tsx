@@ -30,6 +30,7 @@ export function ToolSwitcher() {
       <>
         {/* Floating tool button */}
         <button
+          type="button"
           onClick={() => setOpen(!open)}
           className="fixed top-3 left-3 z-40 flex h-9 w-9 items-center justify-center rounded-lg border border-border-control bg-sidebar"
           aria-label="Switch tool"
@@ -39,6 +40,7 @@ export function ToolSwitcher() {
 
         {/* Floating saved button */}
         <button
+          type="button"
           onClick={() => setSavedOpen(true)}
           className={`fixed top-3 left-14 z-40 flex h-9 w-9 items-center justify-center rounded-lg border border-border-control bg-sidebar ${
             bounce ? "text-yellow-400 scale-150" : "text-text-muted"
@@ -46,7 +48,7 @@ export function ToolSwitcher() {
           style={bounce ? { transition: 'all 300ms cubic-bezier(0.34, 1.56, 0.64, 1)' } : undefined}
           aria-label="Saved designs"
         >
-          <Bookmark className="h-4 w-4" fill={bounce ? 'currentColor' : 'none'} />
+          <Bookmark className="size-4 shrink-0" fill={bounce ? 'currentColor' : 'none'} />
         </button>
         <SavedDesignsPanel open={savedOpen} onOpenChange={setSavedOpen} />
 
@@ -70,7 +72,7 @@ export function ToolSwitcher() {
                   {({ isActive }) => (
                     <>
                       <div
-                        className={`rounded-lg p-0.5 transition-all duration-150 ${
+                        className={`rounded-lg p-0.5 transition-[transform,opacity] duration-150 ${
                           isActive
                             ? "bg-white/10 ring-1 ring-white/20"
                             : "grayscale brightness-50"
@@ -79,7 +81,7 @@ export function ToolSwitcher() {
                         <ToolIcon tool={tool.id} />
                       </div>
                       <span
-                        className={`text-[8px] leading-none transition-colors duration-150 ${
+                        className={`text-[8px] leading-none ${
                           isActive ? "text-white" : "text-text-muted"
                         }`}
                       >
@@ -110,7 +112,7 @@ export function ToolSwitcher() {
           {({ isActive }) => (
             <>
               <div
-                className={`rounded-lg p-0.5 transition-all duration-150 ${
+                className={`rounded-lg p-0.5 transition-[transform,opacity] duration-150 ${
                   isActive
                     ? "bg-white/10 ring-1 ring-white/20"
                     : "grayscale brightness-50 hover:brightness-75 hover:grayscale-50"
@@ -119,7 +121,7 @@ export function ToolSwitcher() {
                 <ToolIcon tool={tool.id} />
               </div>
               <span
-                className={`text-[9px] leading-none transition-colors duration-150 ${
+                className={`text-[9px] leading-none ${
                   isActive ? "text-white" : "text-text-muted"
                 }`}
               >
@@ -131,20 +133,21 @@ export function ToolSwitcher() {
       ))}
       <div className="mt-auto" />
       <button
+        type="button"
         ref={savedBtnRef}
         onClick={() => setSavedOpen(true)}
         className="flex flex-col items-center gap-1.5"
         aria-label="Saved designs"
       >
         <div
-          className={`rounded-lg p-1 transition-all duration-150 ${
+          className={`rounded-lg p-1 transition-[transform,opacity] duration-150 ${
             bounce ? "text-yellow-400 scale-150" : "text-text-muted hover:text-text-secondary"
           }`}
           style={bounce ? { transition: 'all 300ms cubic-bezier(0.34, 1.56, 0.64, 1)' } : undefined}
         >
           <Bookmark className="h-5 w-5" fill={bounce ? 'currentColor' : 'none'} />
         </div>
-        <span className={`text-[9px] leading-none transition-colors duration-150 ${bounce ? "text-yellow-400" : "text-text-muted"}`}>Saved</span>
+        <span className={`text-[9px] leading-none ${bounce ? "text-yellow-400" : "text-text-muted"}`}>Saved</span>
       </button>
       {pages.map((page) => (
         <NavLink
@@ -155,7 +158,7 @@ export function ToolSwitcher() {
           {({ isActive }) => (
             <>
               <div
-                className={`rounded-lg p-0.5 transition-all duration-150 ${
+                className={`rounded-lg p-0.5 transition-[transform,opacity] duration-150 ${
                   isActive
                     ? "bg-white/10 ring-1 ring-white/20"
                     : "grayscale brightness-50 hover:brightness-75 hover:grayscale-50"
@@ -164,7 +167,7 @@ export function ToolSwitcher() {
                 <ToolIcon tool={page.id} />
               </div>
               <span
-                className={`text-[9px] leading-none transition-colors duration-150 ${
+                className={`text-[9px] leading-none ${
                   isActive ? "text-white" : "text-text-muted"
                 }`}
               >
