@@ -15,11 +15,11 @@ export default function About() {
           </div>
           <div className="flex justify-between border-b border-border-control pb-2">
             <span>GitHub</span>
-            <a href="https://github.com/Shpigford/studio" target="_blank" rel="noopener noreferrer" className="text-text-primary transition-colors duration-150 hover:text-white">Shpigford/studio</a>
+            <a href="https://github.com/Shpigford/studio" target="_blank" rel="noopener noreferrer" className="text-text-primary hover:text-white">Shpigford/studio</a>
           </div>
           <div className="flex justify-between border-b border-border-control pb-2">
             <span>X</span>
-            <a href="https://x.com/Shpigford" target="_blank" rel="noopener noreferrer" className="text-text-primary transition-colors duration-150 hover:text-white">@Shpigford</a>
+            <a href="https://x.com/Shpigford" target="_blank" rel="noopener noreferrer" className="text-text-primary hover:text-white">@Shpigford</a>
           </div>
         </div>
       </div>

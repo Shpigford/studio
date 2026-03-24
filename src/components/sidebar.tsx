@@ -41,8 +41,9 @@ function SaveDesignButton() {
 
   return (
     <button
+      type="button"
       onClick={() => shortcutActions.save?.()}
-      className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md text-xs text-text-muted transition-colors duration-150 hover:text-text-primary"
+      className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md text-xs text-text-muted hover:text-text-primary"
     >
       {label ?? <>Save Design <Kbd>S</Kbd></>}
     </button>
@@ -97,7 +98,7 @@ function ShareButton() {
     setOpen(false)
   }
 
-  const itemClass = "flex h-7 w-full items-center gap-2 rounded px-2 text-xs text-text-secondary transition-colors duration-150 hover:bg-white/8 hover:text-text-primary"
+  const itemClass = "flex h-7 w-full items-center gap-2 rounded px-2 text-xs text-text-secondary hover:bg-white/8 hover:text-text-primary"
 
   const label =
     status === 'copied-image' ? 'Image Copied!' :
@@ -108,20 +109,20 @@ function ShareButton() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md text-xs text-text-muted transition-colors duration-150 hover:text-text-primary">
+        <button type="button" className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md text-xs text-text-muted hover:text-text-primary">
           {label ?? 'Share'}
         </button>
       </PopoverTrigger>
       <PopoverContent side="top" className="w-44 p-1">
-        <button onClick={handleCopyImage} className={itemClass}>
-          <Image className="h-3.5 w-3.5" /> Copy Image
+        <button type="button" onClick={handleCopyImage} className={itemClass}>
+          <Image className="size-4 shrink-0" /> Copy Image
         </button>
-        <button onClick={handleCopyLink} className={itemClass}>
-          <Link className="h-3.5 w-3.5" /> Copy Link <Kbd>C</Kbd>
+        <button type="button" onClick={handleCopyLink} className={itemClass}>
+          <Link className="size-4 shrink-0" /> Copy Link <Kbd>C</Kbd>
         </button>
         {canNativeShare() && (
-          <button onClick={handleNativeShare} className={itemClass}>
-            <Share2 className="h-3.5 w-3.5" /> Share…
+          <button type="button" onClick={handleNativeShare} className={itemClass}>
+            <Share2 className="size-4 shrink-0" /> Share…
           </button>
         )}
       </PopoverContent>

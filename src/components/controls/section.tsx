@@ -17,7 +17,7 @@ export function Section({ title, children, defaultOpen = true }: SectionProps) {
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between py-2">
-        <span className="text-2xs font-medium uppercase tracking-wider text-text-tertiary">
+        <span className="font-mono text-2xs font-medium uppercase tracking-wide text-text-tertiary">
           {title}
         </span>
         <svg

@@ -1,3 +1,4 @@
+import { useId } from "react"
 import { Switch } from "@/components/ui/switch"
 
 interface SwitchControlProps {
@@ -11,10 +12,11 @@ export function SwitchControl({
   checked,
   onChange,
 }: SwitchControlProps) {
+  const id = useId()
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-text-secondary">{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <label htmlFor={id} className="text-xs text-text-secondary">{label}</label>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} />
     </div>
   )
 }

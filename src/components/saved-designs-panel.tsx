@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { X, Bookmark } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -41,6 +41,7 @@ function DesignName({ design, onRename }: { design: SavedDesign; onRename: (name
       <input
         ref={inputRef}
         defaultValue={design.name}
+        aria-label="Rename design"
         className="w-full bg-transparent text-xs text-text-primary outline-none"
         onBlur={(e) => {
           const val = e.target.value.trim()
@@ -58,6 +59,7 @@ function DesignName({ design, onRename }: { design: SavedDesign; onRename: (name
 
   return (
     <button
+      type="button"
       onClick={(e) => {
         e.stopPropagation()
         setEditing(true)
@@ -132,8 +134,9 @@ export function SavedDesignsPanel({ open, onOpenChange }: SavedDesignsPanelProps
         {toolIds.length > 1 && (
           <div className="scrollbar-thin flex gap-1.5 overflow-x-auto border-b border-border-control px-4 py-2">
             <button
+              type="button"
               onClick={() => setFilter(null)}
-              className={`shrink-0 rounded-md px-2 py-1 text-[11px] transition-colors duration-150 ${
+              className={`shrink-0 rounded-md px-2 py-1 text-[11px] ${
                 filter === null
                   ? 'bg-white/10 text-text-primary'
                   : 'text-text-muted hover:text-text-secondary'
@@ -145,9 +148,10 @@ export function SavedDesignsPanel({ open, onOpenChange }: SavedDesignsPanelProps
               const tool = tools.find((t) => t.id === id)
               return (
                 <button
+                  type="button"
                   key={id}
                   onClick={() => setFilter(filter === id ? null : id)}
-                  className={`shrink-0 rounded-md px-2 py-1 text-[11px] transition-colors duration-150 ${
+                  className={`shrink-0 rounded-md px-2 py-1 text-[11px] ${
                     filter === id
                       ? 'bg-white/10 text-text-primary'
                       : 'text-text-muted hover:text-text-secondary'
@@ -163,12 +167,22 @@ export function SavedDesignsPanel({ open, onOpenChange }: SavedDesignsPanelProps
         {/* Grid */}
         <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <Bookmark className="size-5 text-text-muted" />
               <span className="text-xs text-text-muted">
                 {designs.length === 0
-                  ? 'No saved designs yet.\nPress S to save the current design.'
+                  ? 'No saved designs yet.'
                   : 'No designs for this filter.'}
               </span>
+              {designs.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  className="rounded-md bg-white/10 px-3 py-1.5 text-xs text-text-primary hover:bg-white/15"
+                >
+                  Press S to save current design
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2">
@@ -181,7 +195,7 @@ export function SavedDesignsPanel({ open, onOpenChange }: SavedDesignsPanelProps
                     onClick={() => handleLoad(design)}
                   >
                     {/* Thumbnail */}
-                    <div className="relative overflow-hidden rounded-md border border-border-control transition-colors duration-150 group-hover:border-border-hover">
+                    <div className="relative overflow-hidden rounded-md border border-border-control group-hover:border-border-hover">
                       <img
                         src={design.thumbnail}
                         alt={design.name}
@@ -189,19 +203,21 @@ export function SavedDesignsPanel({ open, onOpenChange }: SavedDesignsPanelProps
                         draggable={false}
                       />
                       <button
+                        type="button"
+                        aria-label="Delete design"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleDelete(design.id)
                         }}
                         className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-md bg-black/60 text-text-muted opacity-0 transition-opacity duration-150 hover:text-text-primary group-hover:opacity-100"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="size-4 shrink-0" />
                       </button>
                     </div>
                     {/* Info */}
                     <div className="mt-1.5">
                       <div className="flex items-center gap-1">
-                        <ToolIcon tool={design.toolId} className="h-3 w-3 shrink-0" />
+                        <ToolIcon tool={design.toolId} className="size-4 shrink-0" />
                         <DesignName
                           design={design}
                           onRename={(name) => handleRename(design.id, name)}

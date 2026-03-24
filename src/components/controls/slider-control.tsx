@@ -49,6 +49,7 @@ export function SliderControl({
           <input
             ref={inputRef}
             type="text"
+            aria-label={`${label} value`}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => {
