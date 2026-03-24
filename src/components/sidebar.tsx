@@ -97,7 +97,7 @@ function ShareButton() {
     setOpen(false)
   }
 
-  const itemClass = "flex h-7 w-full items-center gap-2 rounded px-2 text-xs text-text-muted transition-colors duration-150 hover:bg-white/5 hover:text-text-primary"
+  const itemClass = "flex h-7 w-full items-center gap-2 rounded px-2 text-xs text-text-secondary transition-colors duration-150 hover:bg-white/8 hover:text-text-primary"
 
   const label =
     status === 'copied-image' ? 'Image Copied!' :
