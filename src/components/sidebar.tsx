@@ -3,7 +3,10 @@ import { useLocation } from 'react-router-dom'
 import { useMobile } from '@/hooks/use-mobile'
 import { shortcutActions } from '@/lib/shortcut-actions'
 import { saveDesign } from '@/lib/saved-designs'
+import { copyImageToClipboard, nativeShare, canNativeShare } from '@/lib/share'
 import { Kbd } from '@/components/ui/kbd'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { Image, Link, Share2 } from 'lucide-react'
 
 interface SidebarProps {
   children: React.ReactNode
@@ -46,25 +49,83 @@ function SaveDesignButton() {
   )
 }
 
-function CopyLinkButton() {
-  const [copied, setCopied] = useState(false)
+function ShareButton() {
+  const [status, setStatus] = useState<'idle' | 'copied-image' | 'copied-link' | 'shared' | 'failed'>('idle')
+  const [open, setOpen] = useState(false)
+  const toolId = useLocation().pathname.slice(1)
 
   useEffect(() => {
-    function onCopied() {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+    function onLinkCopied() {
+      setStatus('copied-link')
+      setTimeout(() => setStatus('idle'), 1500)
     }
-    window.addEventListener('studio:link-copied', onCopied)
-    return () => window.removeEventListener('studio:link-copied', onCopied)
+    window.addEventListener('studio:link-copied', onLinkCopied)
+    return () => window.removeEventListener('studio:link-copied', onLinkCopied)
   }, [])
 
+  useEffect(() => {
+    shortcutActions.copyImage = () => {
+      const canvas = document.querySelector('canvas') as HTMLCanvasElement | null
+      if (!canvas) return
+      copyImageToClipboard(canvas).then((ok) => {
+        setStatus(ok ? 'copied-image' : 'failed')
+        setTimeout(() => setStatus('idle'), 1500)
+      })
+    }
+    return () => { shortcutActions.copyImage = null }
+  }, [])
+
+  const handleCopyImage = () => {
+    shortcutActions.copyImage?.()
+    setTimeout(() => setOpen(false), 800)
+  }
+
+  const handleCopyLink = () => {
+    shortcutActions.copyLink?.()
+    setTimeout(() => setOpen(false), 800)
+  }
+
+  const handleNativeShare = () => {
+    const canvas = document.querySelector('canvas') as HTMLCanvasElement | null
+    if (!canvas) return
+    nativeShare(canvas, toolId || 'design').then((ok) => {
+      if (ok) {
+        setStatus('shared')
+        setTimeout(() => setStatus('idle'), 1500)
+      }
+    })
+    setOpen(false)
+  }
+
+  const itemClass = "flex h-7 w-full items-center gap-2 rounded px-2 text-xs text-text-muted transition-colors duration-150 hover:bg-white/5 hover:text-text-primary"
+
+  const label =
+    status === 'copied-image' ? 'Image Copied!' :
+    status === 'copied-link' ? 'Link Copied!' :
+    status === 'shared' ? 'Shared!' :
+    status === 'failed' ? 'Failed' : null
+
   return (
-    <button
-      onClick={() => shortcutActions.copyLink?.()}
-      className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md text-xs text-text-muted transition-colors duration-150 hover:text-text-primary"
-    >
-      {copied ? 'Copied!' : <>Copy Link <Kbd>C</Kbd></>}
-    </button>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md text-xs text-text-muted transition-colors duration-150 hover:text-text-primary">
+          {label ?? 'Share'}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" className="w-44 p-1">
+        <button onClick={handleCopyImage} className={itemClass}>
+          <Image className="h-3.5 w-3.5" /> Copy Image
+        </button>
+        <button onClick={handleCopyLink} className={itemClass}>
+          <Link className="h-3.5 w-3.5" /> Copy Link <Kbd>C</Kbd>
+        </button>
+        {canNativeShare() && (
+          <button onClick={handleNativeShare} className={itemClass}>
+            <Share2 className="h-3.5 w-3.5" /> Share…
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -82,7 +143,7 @@ function SidebarInner({ children, footer }: SidebarProps) {
       <div className="shrink-0 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="flex gap-1">
           <SaveDesignButton />
-          <CopyLinkButton />
+          <ShareButton />
         </div>
       </div>
     </>

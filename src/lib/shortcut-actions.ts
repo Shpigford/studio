@@ -5,4 +5,5 @@ export const shortcutActions = {
   copyLink: null as (() => void) | null,
   getSettings: null as (() => Record<string, unknown> | null) | null,
   save: null as (() => void) | null,
+  copyImage: null as (() => void) | null,
 }
