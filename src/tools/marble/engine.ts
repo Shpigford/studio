@@ -7,6 +7,7 @@ import { hexToRgb } from "@/lib/color"
 export type MarbleEngine = {
   canvas: HTMLCanvasElement
   resize: (w: number, h: number) => void
+  requestRender: () => void
   destroy: () => void
 }
 
@@ -109,20 +110,23 @@ export function createMarbleEngine(
     uVeinColor: gl.getUniformLocation(program, "uVeinColor"),
   }
 
-  let rafId = 0
+  const MIN_FRAME_INTERVAL = 1000 / 60 // Cap at 60fps
+
+  let animationRafId = 0
+  let renderRafId = 0
   let animTime = 0
   let lastFrameTime = performance.now()
+  let destroyed = false
 
-  function frame() {
+  function renderOneFrame(advanceTime: boolean) {
     const s = settingsRef.current
-    if (!s) { rafId = requestAnimationFrame(frame); return }
+    if (!s) return
 
-    const now = performance.now()
-    if (s.animated) {
+    if (advanceTime) {
+      const now = performance.now()
       animTime += ((now - lastFrameTime) / 1000) * s.speed * 0.85
+      lastFrameTime = now
     }
-    lastFrameTime = now
-    const elapsed = animTime
 
     gl.viewport(0, 0, canvas.width, canvas.height)
     gl.clearColor(0, 0, 0, 1)
@@ -130,7 +134,7 @@ export function createMarbleEngine(
 
     gl.useProgram(program)
 
-    gl.uniform1f(loc.uTime, elapsed)
+    gl.uniform1f(loc.uTime, animTime)
     gl.uniform2f(loc.uResolution, canvas.width, canvas.height)
 
     const main = hexToVec3(s.colorMain)
@@ -167,20 +171,73 @@ export function createMarbleEngine(
     if (recorderRef?.current) {
       recorderRef.current.addFrame(canvas)
     }
-
-    rafId = requestAnimationFrame(frame)
   }
 
-  rafId = requestAnimationFrame(frame)
+  function animationLoop() {
+    if (destroyed) return
+    const s = settingsRef.current
+    if (!s?.animated) {
+      // Animation was turned off — render final frame and stop
+      renderOneFrame(false)
+      animationRafId = 0
+      return
+    }
+
+    const now = performance.now()
+    if (now - lastFrameTime < MIN_FRAME_INTERVAL) {
+      animationRafId = requestAnimationFrame(animationLoop)
+      return
+    }
+
+    renderOneFrame(true)
+    animationRafId = requestAnimationFrame(animationLoop)
+  }
+
+  function requestRender() {
+    if (destroyed) return
+    const s = settingsRef.current
+    if (s?.animated) {
+      if (renderRafId) {
+        cancelAnimationFrame(renderRafId)
+        renderRafId = 0
+      }
+      // Start animation loop if not already running
+      if (!animationRafId) {
+        lastFrameTime = performance.now()
+        animationRafId = requestAnimationFrame(animationLoop)
+      }
+      return
+    }
+    if (animationRafId) {
+      cancelAnimationFrame(animationRafId)
+      animationRafId = 0
+    }
+    // Static mode — queue a single render, coalesced
+    if (renderRafId) return
+    renderRafId = requestAnimationFrame(() => {
+      renderRafId = 0
+      if (destroyed) return
+      renderOneFrame(false)
+    })
+  }
+
+  // Initial render
+  requestRender()
 
   return {
     canvas,
+    requestRender,
     resize(w: number, h: number) {
       canvas.width = w
       canvas.height = h
+      requestRender()
     },
     destroy() {
-      cancelAnimationFrame(rafId)
+      destroyed = true
+      cancelAnimationFrame(animationRafId)
+      cancelAnimationFrame(renderRafId)
+      animationRafId = 0
+      renderRafId = 0
       gl.deleteTexture(noiseTex)
       gl.deleteProgram(program)
       gl.deleteShader(vert)

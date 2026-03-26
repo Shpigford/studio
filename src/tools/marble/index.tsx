@@ -45,6 +45,11 @@ export default function Marble() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Re-render when settings change (starts/stops animation loop as needed)
+  useEffect(() => {
+    engineRef.current?.requestRender()
+  }, [settings])
+
   // Resize canvas when size settings change
   useEffect(() => {
     const [w, h] = resolveCanvasSize(settings.canvasPreset, settings.customWidth, settings.customHeight)
