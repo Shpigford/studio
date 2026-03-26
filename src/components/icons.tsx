@@ -60,6 +60,7 @@ const palettes = {
   plotter:     ["#1a1a33", "#2d2d66", "#5a5a99", "#8b8bcc"],
   ascii:       ["#40351a", "#7a6a2d", "#b5a15a", "#e0d08f"],
   lines:       ["#1a3340", "#2d5c6b", "#5a8f9e", "#8fc2d1"],
+  marble:      ["#402000", "#7a4a10", "#b58030", "#e0b870"],
   about:       ["#262626", "#404040", "#666666", "#8c8c8c"],
 } as const
 
