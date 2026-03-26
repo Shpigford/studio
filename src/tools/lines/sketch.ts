@@ -1,6 +1,7 @@
 import type p5 from 'p5'
 import type { RefObject, MutableRefObject } from 'react'
 import type { LinesSettings } from './types'
+import type { Recorder } from '@/lib/export'
 import { resolveCanvasSize } from '@/lib/canvas-size'
 import { VERT_SHADER, FRAG_SHADER } from './shaders'
 import { generateLineProperties, type LineProperties } from './line-properties'
@@ -9,10 +10,6 @@ import {
   drawHorizontalLines, drawVerticalLines, drawCircles,
   drawDots, drawSpiral, drawRadial, drawLissajous,
 } from './shapes'
-
-interface Recorder {
-  addFrame: (canvas: HTMLCanvasElement) => void
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type P5Any = any

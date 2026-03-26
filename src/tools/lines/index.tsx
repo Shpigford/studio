@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback } from 'react'
 import { useSettings } from '@/hooks/use-settings'
 import { useP5 } from '@/hooks/use-p5'
-import { exportPNG, generateFilename, createRecorder } from '@/lib/export'
+import { exportPNG, generateFilename, createRecorder, type Recorder } from '@/lib/export'
 import { CanvasArea } from '@/components/canvas-area'
 import { Sidebar } from '@/components/sidebar'
 import { Section } from '@/components/controls/section'
@@ -82,11 +82,7 @@ const HALFTONE_TYPE_OPTIONS = [
   { value: 'crosshatch', label: 'Crosshatch' },
 ]
 
-interface Recorder {
-  start: () => void
-  addFrame: (canvas: HTMLCanvasElement) => void
-  stop: () => Promise<Blob>
-}
+const MAX_RECORDING_DIM = 1080
 
 export default function Lines() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -235,8 +231,21 @@ export default function Lines() {
     } else {
       const canvas = containerRef.current?.querySelector('canvas')
       if (!canvas) return
-      const [rw, rh] = resolveCanvasSize(settings.canvasPreset, settings.customWidth, settings.customHeight)
-      const recorder = createRecorder({ width: rw, height: rh, fps: 30, bitrate: 8_000_000 })
+      const [sourceW, sourceH] = resolveCanvasSize(settings.canvasPreset, settings.customWidth, settings.customHeight)
+      const longest = Math.max(sourceW, sourceH)
+      const scale = longest > MAX_RECORDING_DIM ? MAX_RECORDING_DIM / longest : 1
+      const recW = Math.round(sourceW * scale)
+      const recH = Math.round(sourceH * scale)
+      const recPixels = recW * recH
+      const bitrate = Math.max(2_000_000, Math.round(5_000_000 * (recPixels / (1920 * 1080))))
+      const recorder = createRecorder({
+        width: recW,
+        height: recH,
+        sourceWidth: sourceW,
+        sourceHeight: sourceH,
+        fps: 30,
+        bitrate,
+      })
       if (!recorder) return
       recorder.start()
       recorderRef.current = recorder

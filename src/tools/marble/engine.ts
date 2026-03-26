@@ -1,5 +1,6 @@
-import type { RefObject } from "react"
+import type { RefObject, MutableRefObject } from "react"
 import type { MarbleSettings } from "./types"
+import type { Recorder } from "@/lib/export"
 import { VERT_SHADER, FRAG_SHADER } from "./shaders"
 import { hexToRgb } from "@/lib/color"
 
@@ -57,6 +58,7 @@ function generateNoiseTexture(gl: WebGL2RenderingContext): WebGLTexture | null {
 export function createMarbleEngine(
   canvas: HTMLCanvasElement,
   settingsRef: RefObject<MarbleSettings>,
+  recorderRef?: MutableRefObject<Recorder | null>,
 ): MarbleEngine | null {
   const ctx = canvas.getContext("webgl2", {
     preserveDrawingBuffer: true,
@@ -161,6 +163,11 @@ export function createMarbleEngine(
     }
 
     gl.drawArrays(gl.TRIANGLES, 0, 3)
+
+    if (recorderRef?.current) {
+      recorderRef.current.addFrame(canvas)
+    }
+
     rafId = requestAnimationFrame(frame)
   }
 
