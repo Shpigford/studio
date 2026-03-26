@@ -17,7 +17,7 @@ A unified design studio combining 9 generative art tools into a single web app.
   </tr>
   <tr>
     <td align="center"><img src="public/gradients.png" width="180" /><br /><b>Gradients</b></td>
-    <td align="center"><img src="public/marble.png" width="180" /><br /><b>Marble</b></td>
+    <td align="center"><img src="public/marble.jpg" width="180" /><br /><b>Marble</b></td>
     <td align="center"><img src="public/plotter.png" width="180" /><br /><b>Plotter</b></td>
     <td align="center"><img src="public/ascii.jpg" width="180" /><br /><b>ASCII</b></td>
   </tr>
