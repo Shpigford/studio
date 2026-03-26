@@ -11,7 +11,7 @@ export default function About() {
         <div className="space-y-3 text-left text-xs text-text-muted">
           <div className="flex justify-between border-b border-border-control pb-2">
             <span>Stack</span>
-            <span className="text-text-primary">React + p5.js + Canvas 2D</span>
+            <span className="text-text-primary">React + p5.js + Canvas 2D + WebGL2</span>
           </div>
           <div className="flex justify-between border-b border-border-control pb-2">
             <span>GitHub</span>

@@ -1,6 +1,6 @@
 # Studio
 
-A unified design studio combining 8 generative art tools into a single web app.
+A unified design studio combining 9 generative art tools into a single web app.
 
 **Live:** [studio.neato.fun](https://studio.neato.fun) — Made by [@Shpigford](https://x.com/Shpigford)
 
@@ -17,8 +17,11 @@ A unified design studio combining 8 generative art tools into a single web app.
   </tr>
   <tr>
     <td align="center"><img src="public/gradients.png" width="180" /><br /><b>Gradients</b></td>
+    <td align="center"><img src="public/marble.png" width="180" /><br /><b>Marble</b></td>
     <td align="center"><img src="public/plotter.png" width="180" /><br /><b>Plotter</b></td>
     <td align="center"><img src="public/ascii.jpg" width="180" /><br /><b>ASCII</b></td>
+  </tr>
+  <tr>
     <td align="center"><img src="public/lines.png" width="180" /><br /><b>Lines</b></td>
   </tr>
 </table>
@@ -38,6 +41,9 @@ Ordered dithering applied to gradients or uploaded images. Pure Canvas 2D (no p5
 ### Gradients
 Animated liquid glass gradient surfaces rendered with WebGL shaders. Simplex noise generates height fields, surface normals drive lighting, and Fresnel reflectance adds specular highlights. Supports MP4 video recording via mp4-muxer.
 
+### Marble
+Marbled textures rendered with WebGL2 fragment shaders. Layered Perlin noise and FBM domain warping produce fluid, watercolor-like patterns. Features ridged-noise veins, watercolor displacement, adjustable grain, and optional animation. Pure GPU — no p5.js or Three.js.
+
 ### Plotter
 Vector-art plots with 6 pattern types (dot grid, flow field, concentric rings, waves, hatching, geometric tessellations) and 5 brush styles (normal, stippled, multi-stroke, calligraphic, stamp). Paper texture overlays with fiber and scratch effects.
 
@@ -51,8 +57,8 @@ Abstract linear compositions from 7 shape generators (horizontal/vertical lines,
 
 - **Vite + React 19 + TypeScript** (strict mode)
 - **Tailwind CSS v4 + shadcn/ui** for UI controls
-- **p5.js v2** (instance mode) for 7 tools, **Canvas 2D** for Dither
-- **WebGL/GLSL** shaders for Gradients and Lines post-processing
+- **p5.js v2** (instance mode) for 7 tools, **Canvas 2D** for Dither, **raw WebGL2** for Marble
+- **WebGL/GLSL** shaders for Marble, Gradients, and Lines post-processing
 - **mp4-muxer** for video export
 - **react-colorful** for color pickers
 - **react-router-dom v7** for path-based routing

@@ -27,6 +27,12 @@ export const tools: ToolDefinition[] = [
     component: lazy(() => import("@/tools/gradients")),
   },
   {
+    id: "marble",
+    name: "Marble",
+    icon: "marble",
+    component: lazy(() => import("@/tools/marble")),
+  },
+  {
     id: "lines",
     name: "Lines",
     icon: "lines",
