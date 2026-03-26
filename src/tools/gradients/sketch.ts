@@ -1,12 +1,9 @@
 import type p5 from 'p5'
 import type { RefObject, MutableRefObject } from 'react'
 import type { GradientsSettings } from './types'
+import type { Recorder } from '@/lib/export'
 import { hexToRgb } from '@/lib/color'
 import { resolveCanvasSize } from '@/lib/canvas-size'
-
-interface Recorder {
-  addFrame: (canvas: HTMLCanvasElement) => void
-}
 
 const vertShader = `
 attribute vec3 aPosition;
@@ -363,9 +360,9 @@ export function createGradientsSketch(
     // Draw to main canvas
     p.image(shaderGraphics, 0, 0, p.width, p.height)
 
-    // Record frame if recording
+    // Record frame if recording (capture from main 2D canvas, not WebGL buffer)
     if (recorderRef.current) {
-      const canvas = (shaderGraphics as P5Any).canvas ?? (shaderGraphics as P5Any).elt
+      const canvas = (p as P5Any).canvas
       if (canvas) {
         recorderRef.current.addFrame(canvas)
       }

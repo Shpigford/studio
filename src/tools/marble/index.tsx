@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSettings } from "@/hooks/use-settings"
 import { CanvasArea } from "@/components/canvas-area"
 import { Sidebar } from "@/components/sidebar"
@@ -10,7 +10,7 @@ import { ButtonRow } from "@/components/controls/button-row"
 import { Button } from "@/components/ui/button"
 import { useShortcutActions } from "@/hooks/use-shortcut-actions"
 import { Kbd } from "@/components/ui/kbd"
-import { exportPNG, generateFilename } from "@/lib/export"
+import { exportPNG, generateFilename, createRecorder, type Recorder } from "@/lib/export"
 import { CanvasSizeControl } from "@/components/controls/canvas-size-control"
 import type { CanvasPreset } from "@/lib/canvas-size"
 import { resolveCanvasSize } from "@/lib/canvas-size"
@@ -19,11 +19,15 @@ import { DEFAULTS, randomizeColors } from "./types"
 import { createMarbleEngine } from "./engine"
 import type { MarbleEngine } from "./engine"
 
+const MAX_RECORDING_DIM = 1080
+
 export default function Marble() {
   const [settings, update, reset] = useSettings<MarbleSettings>("marble", DEFAULTS)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<MarbleEngine | null>(null)
+  const recorderRef = useRef<Recorder | null>(null)
   const settingsRef = useRef(settings)
+  const [isRecording, setIsRecording] = useState(false)
   settingsRef.current = settings
 
   // Init engine on mount
@@ -33,7 +37,7 @@ export default function Marble() {
     const [w, h] = resolveCanvasSize(settings.canvasPreset, settings.customWidth, settings.customHeight)
     canvas.width = w
     canvas.height = h
-    engineRef.current = createMarbleEngine(canvas, settingsRef)
+    engineRef.current = createMarbleEngine(canvas, settingsRef, recorderRef)
     return () => {
       engineRef.current?.destroy()
       engineRef.current = null
@@ -71,6 +75,46 @@ export default function Marble() {
     if (canvas) exportPNG(canvas, generateFilename("marble", "png"))
   }
 
+  async function toggleRecording() {
+    if (isRecording) {
+      const recorder = recorderRef.current
+      if (recorder) {
+        const blob = await recorder.stop()
+        recorderRef.current = null
+        setIsRecording(false)
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = generateFilename("marble", "mp4")
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    } else {
+      const [sourceW, sourceH] = resolveCanvasSize(settings.canvasPreset, settings.customWidth, settings.customHeight)
+      const longest = Math.max(sourceW, sourceH)
+      const scale = longest > MAX_RECORDING_DIM ? MAX_RECORDING_DIM / longest : 1
+      const recW = Math.round(sourceW * scale)
+      const recH = Math.round(sourceH * scale)
+      const recPixels = recW * recH
+      const bitrate = Math.max(2_000_000, Math.round(5_000_000 * (recPixels / (1920 * 1080))))
+      const recorder = createRecorder({
+        width: recW,
+        height: recH,
+        sourceWidth: sourceW,
+        sourceHeight: sourceH,
+        fps: 30,
+        bitrate,
+      })
+      if (!recorder) return
+      recorder.start()
+      recorderRef.current = recorder
+      setIsRecording(true)
+      if (!settings.animated) {
+        update({ animated: true })
+      }
+    }
+  }
+
   useShortcutActions({ randomize, reset, download })
 
   return (
@@ -84,8 +128,11 @@ export default function Marble() {
             <Button variant="secondary" onClick={reset}>
               Reset <Kbd>⌫</Kbd>
             </Button>
-            <Button variant="primary" className="w-full" onClick={download}>
+            <Button variant="primary" onClick={download}>
               Export PNG <Kbd>⌘S</Kbd>
+            </Button>
+            <Button variant="secondary" onClick={toggleRecording}>
+              {isRecording ? "Stop Recording" : "Record MP4"}
             </Button>
           </ButtonRow>
         }
