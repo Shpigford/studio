@@ -133,6 +133,7 @@ export function createRecorder(
 
       const frame = new VideoFrame(source, {
         timestamp: (frameCount / fps) * 1_000_000,
+        duration: Math.round(1_000_000 / fps),
       });
       encoder.encode(frame);
       frame.close();
@@ -140,11 +141,19 @@ export function createRecorder(
     },
 
     async stop(): Promise<Blob> {
-      await encoder.flush();
+      let flushError: unknown;
+      try {
+        await encoder.flush();
+      } catch (e) {
+        flushError = e;
+      } finally {
+        encoder.close();
+      }
       muxer.finalize();
       const buf = muxer.target.buffer;
       scaleCanvas = null;
       scaleCtx = null;
+      if (flushError) throw flushError;
       return new Blob([buf], { type: "video/mp4" });
     },
   };

@@ -143,19 +143,22 @@ export default function Gradients() {
 
   async function toggleRecording() {
     if (isRecording) {
-      // Stop recording
       const recorder = recorderRef.current
       if (recorder) {
-        const blob = await recorder.stop()
-        recorderRef.current = null
-        setIsRecording(false)
-
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = generateFilename('gradient', 'mp4')
-        a.click()
-        URL.revokeObjectURL(url)
+        try {
+          const blob = await recorder.stop()
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = generateFilename('gradient', 'mp4')
+          a.click()
+          URL.revokeObjectURL(url)
+        } catch (e) {
+          console.error("Recording stop error:", e)
+        } finally {
+          recorderRef.current = null
+          setIsRecording(false)
+        }
       }
     } else {
       // Start recording — cap at 1080p for encoding performance

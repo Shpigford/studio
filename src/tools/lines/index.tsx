@@ -218,15 +218,20 @@ export default function Lines() {
     if (isRecording) {
       const recorder = recorderRef.current
       if (recorder) {
-        const blob = await recorder.stop()
-        recorderRef.current = null
-        setIsRecording(false)
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = generateFilename('lines', 'mp4')
-        a.click()
-        URL.revokeObjectURL(url)
+        try {
+          const blob = await recorder.stop()
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = generateFilename('lines', 'mp4')
+          a.click()
+          URL.revokeObjectURL(url)
+        } catch (e) {
+          console.error("Recording stop error:", e)
+        } finally {
+          recorderRef.current = null
+          setIsRecording(false)
+        }
       }
     } else {
       const canvas = containerRef.current?.querySelector('canvas')
